@@ -1,10 +1,31 @@
 #include "doctest.h"
-
+#include <fstream>
 #include <Scratch.hpp>
+
+template<size_t S>
+struct TestScratchKinetic
+{
+    TestScratchKinetic()
+    {
+        memset(this, 0, sizeof(*this));
+
+        timestamp[0] = 0;
+        result.frames = frames;
+
+        for (int i = 1; i < S; ++i)
+            timestamp[i] = timestamp[i-1] + 60;
+    }
+
+    constexpr size_t size() { return S; }
+
+    uint64_t timestamp[S];
+    ScratchResultFrame frames[S];
+    ScratchResultKinetic result;
+};
 
 TEST_SUITE("SerializeScratchTest")
 {
-    TEST_CASE("TestSerialize")
+    TEST_CASE("TestJSONSerialize")
     {
         ScratchResult scratchResult{};
 
@@ -13,7 +34,7 @@ TEST_SUITE("SerializeScratchTest")
         CHECK_FALSE(str.isEmpty());
     }
 
-    TEST_CASE("TestDeserialize")
+    TEST_CASE("TestJSONDeserialize")
     {
         ScratchResult scratchResult{};
 
@@ -26,5 +47,19 @@ TEST_SUITE("SerializeScratchTest")
         fromJson(scratchResult, json);
 
         CHECK_EQ(scratchResult.area.pixel, 1.0);
+    }
+
+    TEST_CASE("TestCSVSerialize")
+    {
+        TestScratchKinetic<10> testScratchKinetic;
+
+        std::ofstream file("test.csv");
+
+
+        CCSVSerializer::process(
+            testScratchKinetic.timestamp,
+            testScratchKinetic.result,
+            testScratchKinetic.size(),
+            file);
     }
 }

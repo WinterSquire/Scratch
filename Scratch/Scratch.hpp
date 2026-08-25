@@ -4,8 +4,11 @@
 #pragma once
 
 #include <cstdint>
-#include <QJsonObject>
 #include <opencv2/opencv.hpp>
+
+#include "Serialization/CSV.hpp"
+#include "Serialization/HTML.hpp"
+#include "Serialization/JSON.hpp"
 
 /* ---------- 控制器类 */
 
@@ -52,25 +55,6 @@ public:
         struct ScratchResultKinetic& result,
         struct ScratchInvasionData* invasionDataList = NULL);
 };
-
-/* ---------- 序列化接口 */
-#define toJsonString(data) (QJsonDocument(toJson(data)).toJson(QJsonDocument::Compact))
-#define fromJsonString(data, json) fromJson(data, (QJsonDocument::fromJson(jsonUtf8)));
-
-QJsonObject toJson(const struct ScratchParameter& data);
-int fromJson(struct ScratchParameter& data, const QJsonObject& json);
-
-QJsonObject toJson(const struct ScratchArea& data);
-int fromJson(struct ScratchArea& data, const QJsonObject& json);
-
-QJsonObject toJson(const struct ScratchInvasionData& data);
-int fromJson(struct ScratchInvasionData& data, const QJsonObject& json);
-
-QJsonObject toJson(const struct ScratchResult& data);
-int fromJson(struct ScratchResult& data, const QJsonObject& json);
-
-QJsonObject toJson(const struct ScratchResultFrame& data);
-int fromJson(struct ScratchResultFrame& data, const QJsonObject& json);
 
 /* ---------- 数据结构体 */
 

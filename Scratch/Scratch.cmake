@@ -9,6 +9,11 @@ set(ScratchSource
 
     # 轮廓处理算法
     Scratch/Contour/Gaussian.cpp
+
+    # 序列化
+    Scratch/Serialization/CSV.cpp
+    Scratch/Serialization/HTML.cpp
+    Scratch/Serialization/JSON.cpp
 )
 
 # add library

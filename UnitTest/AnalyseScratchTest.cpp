@@ -1,4 +1,4 @@
-
+#include <fstream>
 #include <filesystem>
 #include <vector>
 #include <string>
@@ -184,5 +184,13 @@ TEST_SUITE("AnalyseScratchTest")
         {
             CHECK(timestampList[i] >= timestampList[i-1]);
         }
+
+        std::ofstream file("TestAnalyseScratchKinetic.csv");
+
+        CCSVSerializer::process(
+            timestampList.data(),
+            result,
+            size,
+            file);
     }
 }
