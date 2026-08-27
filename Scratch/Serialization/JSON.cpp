@@ -4,26 +4,27 @@
 #include "../Scratch.hpp"
 
 int CJSONSerializer::process(
-    const uint64_t *timestampList, 
-    const ScratchResultKinetic &data, 
+    const uint64_t* timestampList, 
+    const struct ScratchResultFrame* frames,
     size_t size, 
-    std::ostream &os)
+    const struct ScratchResultKinetic& data, 
+    std::ostream& os)
 {
-    QJsonObject root;
-    QJsonArray frames, timestamps;
+    QJsonObject jRoot;
+    QJsonArray jFrames, jTimestamps;
 
     for (int i = 0; i < size; ++i)
     {
-        timestamps.push_back((qint64)timestampList[i]);
-        frames.push_back(toJson(data.frames[i]));
+        jTimestamps.push_back((qint64)timestampList[i]);
+        jFrames.push_back(toJson(frames[i]));
     }
 
-    root["t50"] = data.t50;
-    root["t90"] = data.t90;
-    root["frames"] = frames;
-    root["timestamps"] = timestamps;
+    jRoot["t50"] = data.t50;
+    jRoot["t90"] = data.t90;
+    jRoot["frames"] = jFrames;
+    jRoot["timestamps"] = jTimestamps;
 
-    os << QJsonDocument(root).toJson().constData();
+    os << QJsonDocument(jRoot).toJson().constData();
 
     return 0;
 }
@@ -61,25 +62,11 @@ int fromJson(ScratchArea& data, const QJsonObject& json)
     return 0;
 }
 
-QJsonObject toJson(const ScratchInvasionData& data)
-{
-    return QJsonObject::fromVariantMap({
-        {"area", toJson(data.area)},
-        {"ratio", data.ratio}
-    });
-}
-
-int fromJson(ScratchInvasionData& data, const QJsonObject& json)
-{
-    fromJson(data.area, json.value("area").toObject());
-    data.ratio = json.value("ratio").toDouble();
-    return 0;
-}
-
 QJsonObject toJson(const ScratchResult& data)
 {
     return QJsonObject::fromVariantMap({
-        {"area", toJson(data.area)},
+        {"scratchArea", toJson(data.scratchArea)},
+        {"invasionArea", toJson(data.invasionArea)},
         {"width", QJsonObject::fromVariantMap({
             {"avg", data.width.avg},
             {"std", data.width.std},
@@ -95,7 +82,8 @@ QJsonObject toJson(const ScratchResult& data)
 
 int fromJson(ScratchResult& data, const QJsonObject& json)
 {
-    fromJson(data.area, json.value("area").toObject());
+    fromJson(data.scratchArea, json.value("scratchArea").toObject());
+    fromJson(data.invasionArea, json.value("invasionArea").toObject());
     const auto width = json.value("width").toObject();
     data.width.avg = width.value("avg").toDouble();
     data.width.std = width.value("std").toDouble();
@@ -109,29 +97,28 @@ int fromJson(ScratchResult& data, const QJsonObject& json)
 
 QJsonObject toJson(const ScratchResultFrame& data)
 {
-    return QJsonObject::fromVariantMap({
-        {"raw", toJson(data.raw)},
-        {"heal", QJsonObject::fromVariantMap({
-            {"raw", data.heal.raw},
-            {"corrected", data.heal.corrected}
-        })},
-        {"speed", QJsonObject::fromVariantMap({
-            {"area", data.speed.area},
-            {"width", data.speed.width}
-        })},
-        {"quality", data.quality}
+    auto&& jObject = toJson(*(ScratchResult*)&data);
+
+    jObject["heal"] = data.heal;
+    jObject["quality"] = data.quality;
+    jObject["speed"] = QJsonObject::fromVariantMap({
+        {"area", data.speed.area},
+        {"width", data.speed.width}
     });
+
+    return jObject;
 }
 
 int fromJson(ScratchResultFrame& data, const QJsonObject& json)
 {
-    fromJson(data.raw, json.value("raw").toObject());
-    const auto heal = json.value("heal").toObject();
+    fromJson(*(ScratchResult*)&data, json);
+
+    data.heal = json.value("heal").toDouble();
+    data.quality = json.value("quality").toInt();
+
     const auto speed = json.value("speed").toObject();
-    data.heal.raw = heal.value("raw").toDouble();
-    data.heal.corrected = heal.value("corrected").toDouble();
     data.speed.area = speed.value("area").toDouble();
     data.speed.width = speed.value("width").toDouble();
-    data.quality = json.value("quality").toInt();
+
     return 0;
 }

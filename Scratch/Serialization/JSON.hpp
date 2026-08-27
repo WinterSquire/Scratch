@@ -8,8 +8,9 @@ class CJSONSerializer
 public:
     static int process(
         const uint64_t* timestampList, 
-        const struct ScratchResultKinetic& data, 
+        const struct ScratchResultFrame* frames,
         size_t size, 
+        const struct ScratchResultKinetic& data, 
         std::ostream& os);
 };
 
@@ -21,9 +22,6 @@ int fromJson(struct ScratchParameter& data, const QJsonObject& json);
 
 QJsonObject toJson(const struct ScratchArea& data);
 int fromJson(struct ScratchArea& data, const QJsonObject& json);
-
-QJsonObject toJson(const struct ScratchInvasionData& data);
-int fromJson(struct ScratchInvasionData& data, const QJsonObject& json);
 
 QJsonObject toJson(const struct ScratchResult& data);
 int fromJson(struct ScratchResult& data, const QJsonObject& json);

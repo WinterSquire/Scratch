@@ -10,7 +10,6 @@ struct TestScratchKinetic
         memset(this, 0, sizeof(*this));
 
         timestamp[0] = 0;
-        result.frames = frames;
 
         for (int i = 1; i < S; ++i)
             timestamp[i] = timestamp[i-1] + 60;
@@ -38,15 +37,15 @@ TEST_SUITE("SerializeScratchTest")
     {
         ScratchResult scratchResult{};
 
-        scratchResult.area.pixel = 1.0;
+        scratchResult.scratchArea.pixel = 1.0;
 
         auto json = toJson(scratchResult);
 
-        scratchResult.area.pixel = 0.0;
+        scratchResult.scratchArea.pixel = 0.0;
 
         fromJson(scratchResult, json);
 
-        CHECK_EQ(scratchResult.area.pixel, 1.0);
+        CHECK_EQ(scratchResult.scratchArea.pixel, 1.0);
     }
 
     TEST_CASE("TestCSVSerialize")
@@ -57,8 +56,9 @@ TEST_SUITE("SerializeScratchTest")
 
         CCSVSerializer::process(
             testScratchKinetic.timestamp,
-            testScratchKinetic.result,
+            testScratchKinetic.frames,
             testScratchKinetic.size(),
+            testScratchKinetic.result,
             file);
     }
 }

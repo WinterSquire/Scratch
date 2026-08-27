@@ -19,12 +19,10 @@ union ContouringStorage
     char gaussian[sizeof(class CContouringGaussian)];
 };
 
-EScratchQuality CScratchController::analyseScratch(
-    const cv::Mat& expImage, 
-    const cv::Mat* conImage, 
-    const ScratchParameter& parameter, 
-    ScratchResult& result, 
-    ScratchInvasionData *invasionData)
+inline static EScratchQuality analyseScratch(
+    const cv::Mat& image, 
+    const struct ScratchParameter& parameter, 
+    struct ScratchResult& result)
 {
     cv::Mat mask;
     int errorCode;
@@ -41,19 +39,22 @@ EScratchQuality CScratchController::analyseScratch(
         new (&contouringStorage) CContouringGaussian();
     }    
 
-    errorCode = masking->process(&expImage, &mask);
+    errorCode = masking->process(&image, &mask);
     
     if (errorCode)
         return ScratchQualityAbnormal;
 
     // 统计image和mask的像素数量，并计算汇合度
     {
-        result.area.pixel = static_cast<double>(cv::countNonZero(mask));
-        result.area.um = result.area.pixel * parameter.dx * parameter.dy;
+        result.scratchArea.pixel = static_cast<double>(cv::countNonZero(mask));
+        result.scratchArea.um = result.scratchArea.pixel * parameter.dx * parameter.dy;
+
+        result.invasionArea.um = 0;
+        result.invasionArea.pixel = 0;
 
         const double totalPixels = static_cast<double>(mask.total());
         result.confluence = totalPixels > 0.0
-            ? 1.0 - (result.area.pixel / totalPixels)
+            ? 1.0 - (result.scratchArea.pixel / totalPixels)
             : 0.0;
     }
 
@@ -72,70 +73,107 @@ EScratchQuality CScratchController::analyseScratch(
     return quality;
 }
 
+inline static void calculateScratchResultKinetic(
+    double timeElapsed,
+    struct ScratchResultFrame& frameCurrent,
+    struct ScratchResultFrame& framePrevious,
+    struct ScratchResultFrame& frameFirst)
+{
+    frameCurrent.heal = (frameFirst.scratchArea.pixel - frameCurrent.scratchArea.pixel) / frameFirst.scratchArea.pixel;
+    frameCurrent.speed.area = (framePrevious.scratchArea.um - frameCurrent.scratchArea.um) / timeElapsed;
+    frameCurrent.speed.width = (framePrevious.width.avg - frameCurrent.width.avg) / timeElapsed;
+}
+
+EScratchQuality CScratchController::analyseScratch(
+    const cv::Mat& image, 
+    const struct ScratchParameter& parameter, 
+    struct ScratchResult& result)
+{
+    return ::analyseScratch(image, parameter, result);
+}
+
 int CScratchController::analyseScratchKinetic(
-    const cv::Mat* expImageList, 
-    const cv::Mat* conImageList, 
-    const uint64_t* timestampList, 
-    size_t size, 
-    const ScratchParameter& parameter, 
-    ScratchResultKinetic& result, 
-    ScratchInvasionData* invasionDataList)
+    const cv::Mat* images,
+    const uint64_t* timestamps,
+    struct ScratchResultFrame* frames,
+    size_t size,
+    const struct ScratchParameter& parameter,
+    struct ScratchResultKinetic& result)
 {
     int level = 0;
+    double healList[NumberOfFrames];
+    uint64_t timestampList[NumberOfFrames];
+    std::vector<double> times(size), timesElapsed(size);
+
+    timestampList[FrameCurrent] = timestampList[FramePrevious] = timestampList[FrameFirst] = timestamps[0];
 
     for (int i = 0; i < size; ++i)
     {
-        auto& resultKinetic = result.frames[i];
-        auto& expImage = expImageList[i];
-
-        resultKinetic.quality = analyseScratch(
-            expImage, 
-            NULL,
-            parameter,
-            resultKinetic.raw
-        );
+        timestampList[FramePrevious] = timestampList[FrameCurrent];
+        timestampList[FrameCurrent] = timestamps[i];
+        times[i] = (timestampList[FrameCurrent] - timestampList[FrameFirst]) / 3600.0;
+        timesElapsed[i] = (timestampList[FrameCurrent] - timestampList[FramePrevious]) / 3600.0;
     }
+    
+    for (int i = 0; i < size; ++i)
+        frames[i].quality = ::analyseScratch(images[i], parameter, frames[i]);
 
-    auto& fResult = result.frames[0];
+    for (int i = 1; i < size; ++i)
+        ::calculateScratchResultKinetic(timesElapsed[i], frames[i], frames[i-1], frames[0]);
+
+    healList[FrameCurrent] = healList[FramePrevious] = healList[FrameFirst] = frames[0].heal;
 
     for (int i = 1; i < size; ++i)
     {
-        auto& cResult = result.frames[i];
-        auto& pResult = result.frames[i-1];
-        auto timeElapsed = (timestampList[i] - timestampList[i-1]) / 3600.0;
-        auto healRaw = (fResult.raw.area.pixel - cResult.raw.area.pixel) / fResult.raw.area.pixel;
+        if (level > 1)
+            break;
+        
+        healList[FramePrevious] = healList[FrameCurrent];
+        healList[FrameCurrent] = frames[i].heal;
 
-        cResult.heal.raw = cResult.heal.corrected = healRaw;
-        cResult.speed.area = (pResult.raw.area.um - cResult.raw.area.um) / timeElapsed;
-        cResult.speed.width = (pResult.raw.width.avg - cResult.raw.width.avg) / timeElapsed;
-
-        switch (level)
+        if (level == 0 && healList[FrameCurrent] >= 0.5)
         {
-        case 0:
-            if (healRaw < 0.5)
-                break;
-
-            if (std::fabs(healRaw - 0.5) < 1e-4)
-                result.t50 = (timestampList[i] - timestampList[0]) / 3600.0;
-            else
-                result.t50 = ((timestampList[i-1] - timestampList[0]) / 3600.0) + (timeElapsed * (0.5 - pResult.heal.corrected) / (cResult.heal.corrected - pResult.heal.corrected));
-
             ++level;
-            break;
-        case 1:
-            if (healRaw < 0.9)
-                break;
-
-            if (std::fabs(healRaw - 0.9) < 1e-4)
-                result.t90 = (timestampList[i] - timestampList[0]) / 3600.0;
-            else
-                result.t90 = ((timestampList[i-1] - timestampList[0]) / 3600.0) + (timeElapsed * (0.9 - pResult.heal.corrected) / (cResult.heal.corrected - pResult.heal.corrected));
-
-            ++level;
-            break;
-        default:
-            break;
+            result.t50 = times[i-1] + (timesElapsed[i] * (0.5 - healList[FramePrevious]) / (healList[FrameCurrent] - healList[FramePrevious]));
         }
+
+        if (level == 1 && healList[FrameCurrent] >= 0.9)
+        {
+            ++level;
+            result.t90 = times[i-1] + (timesElapsed[i] * (0.9 - healList[FramePrevious]) / (healList[FrameCurrent] - healList[FramePrevious]));
+        }
+    }
+
+    return 0;
+}
+
+int CScratchController::analyseScratchKineticOnce(
+    const cv::Mat& image,
+    const uint64_t timestamps[NumberOfFrames],
+    struct ScratchResultFrame* frames[NumberOfFrames],
+    const struct ScratchParameter& parameter,
+    struct ScratchResultKinetic& result)
+{
+    auto timeElapsed = (timestamps[FrameCurrent] - timestamps[FramePrevious]) / 3600.0;
+
+    frames[FrameCurrent]->quality = ::analyseScratch(image, parameter, *frames[FrameCurrent]);
+
+    ::calculateScratchResultKinetic(timeElapsed, *frames[FrameCurrent], *frames[FramePrevious], *frames[FrameFirst]);
+
+    auto heal = frames[FrameCurrent]->heal;
+
+    if (result.t50 == 0 && heal >= 0.5)
+    {
+        auto healBase = frames[FramePrevious]->heal;
+        auto timeBase = (timestamps[FramePrevious] - timestamps[FrameFirst]) / 3600.0;
+        result.t50 = timeBase + (timeElapsed * (0.5 - healBase) / (heal - healBase));
+    }
+
+    if (result.t90 == 0 && heal >= 0.9)
+    {
+        auto healBase = frames[FramePrevious]->heal;
+        auto timeBase = (timestamps[FramePrevious] - timestamps[FrameFirst]) / 3600.0;
+        result.t50 = timeBase + (timeElapsed * (0.9 - healBase) / (heal - healBase));
     }
 
     return 0;

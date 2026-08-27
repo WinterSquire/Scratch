@@ -53,10 +53,11 @@ static const char* toString(int quality)
 }
 
 int CCSVSerializer::process(
-    const uint64_t *timestampList, 
-    const ScratchResultKinetic &data, 
+    const uint64_t* timestampList, 
+    const struct ScratchResultFrame* frames,
     size_t size, 
-    std::ostream &os)
+    const struct ScratchResultKinetic& data, 
+    std::ostream& os)
 {
     QString value;
     uint64_t baseTimestamp = timestampList[0];
@@ -83,52 +84,52 @@ int CCSVSerializer::process(
                 }
                 case ColumnAreaPixel:
                 {
-                    os << QByteArray::number(data.frames[i].raw.area.pixel, 'f', 0).constData() << ',';
+                    os << QByteArray::number(frames[i].scratchArea.pixel, 'f', 0).constData() << ',';
                     break;
                 }
                 case ColumnAreaUM:
                 {
-                    os << QByteArray::number(data.frames[i].raw.area.um, 'f', 2).constData() << ',';
+                    os << QByteArray::number(frames[i].scratchArea.um, 'f', 2).constData() << ',';
                     break;
                 }
                 case ColumnRemaining:
                 {
-                    os << QByteArray::number((1-data.frames[i].heal.corrected)*100, 'f', 0).constData() << ',';
+                    os << QByteArray::number((1-frames[i].heal)*100, 'f', 0).constData() << ',';
                     break;
                 }
                 case ColumnHeal:
                 {
-                    os << QByteArray::number(data.frames[i].heal.corrected*100, 'f', 0).constData() << ',';
+                    os << QByteArray::number(frames[i].heal*100, 'f', 0).constData() << ',';
                     break;
                 }
                 case ColumnWidthAVG:
                 {
-                    os << QByteArray::number(data.frames[i].raw.width.avg, 'f', 2).constData() << ',';
+                    os << QByteArray::number(frames[i].width.avg, 'f', 2).constData() << ',';
                     break;
                 }
                 case ColumnWidthMED:
                 {
-                    os << QByteArray::number(data.frames[i].raw.width.med, 'f', 2).constData() << ',';
+                    os << QByteArray::number(frames[i].width.med, 'f', 2).constData() << ',';
                     break;
                 }
                 case ColumnWidthSTD:
                 {
-                    os << QByteArray::number(data.frames[i].raw.width.std, 'f', 2).constData() << ',';
+                    os << QByteArray::number(frames[i].width.std, 'f', 2).constData() << ',';
                     break;
                 }
                 case ColumnSpeedArea:
                 {
-                    os << QByteArray::number(data.frames[i].speed.area, 'f', 2).constData() << ',';
+                    os << QByteArray::number(frames[i].speed.area, 'f', 2).constData() << ',';
                     break;
                 }
                 case ColumnSpeedWidth:
                 {
-                    os << QByteArray::number(data.frames[i].speed.width, 'f', 2).constData() << ',';
+                    os << QByteArray::number(frames[i].speed.width, 'f', 2).constData() << ',';
                     break;
                 }
                 case ColumnQuality:
                 {
-                    os << toString(data.frames[i].quality) << '\n';
+                    os << toString(frames[i].quality) << '\n';
                     break;
                 }
                 default:

@@ -32,14 +32,14 @@ TEST_SUITE("AnalyseScratchTest")
         auto imageRGB = cv::imread(imagePath, cv::IMREAD_COLOR_RGB);
 
         auto timeBegin = std::chrono::high_resolution_clock::now();
-        auto imageQuality = CScratchController::analyseScratch(imageRGB, NULL, parameter, result);
+        auto imageQuality = CScratchController::analyseScratch(imageRGB, parameter, result);
         auto timeEnd = std::chrono::high_resolution_clock::now();
         auto timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeBegin).count();
 
         MESSAGE("Spend Time: " << timeElapsed << " ms");
         MESSAGE(toJsonString(result));
 
-        CHECK_EQ(result.area.pixel, 2181514.00);
+        CHECK_EQ(result.scratchArea.pixel, 2181514.00);
         CHECK_DOUBLE_ABS(result.width.avg, 1064.22, 1e-2);
         CHECK_DOUBLE_ABS(result.width.std, 15.15, 1e-4);
         CHECK_DOUBLE_ABS(result.roughness.left, 1.07, 1e-4);
@@ -70,7 +70,6 @@ TEST_SUITE("AnalyseScratchTest")
             timestampList[i] = QDateTime::fromString(date, "yyyyMMdd_HHmmss").toSecsSinceEpoch();
         }
 
-        result.frames = frames.data();
         parameter.dx = parameter.dy = 1.0;
 
         REQUIRE(expImageList.size() == timestampList.size());
@@ -79,8 +78,8 @@ TEST_SUITE("AnalyseScratchTest")
         auto timeBegin = std::chrono::high_resolution_clock::now();
         errorCode = CScratchController::analyseScratchKinetic(
             expImageList.data(),
-            nullptr,
             timestampList.data(),
+            frames.data(),
             size,
             parameter,
             result);
@@ -95,16 +94,18 @@ TEST_SUITE("AnalyseScratchTest")
         
         CJSONSerializer::process(
             timestampList.data(),
-            result,
+            frames.data(),
             size,
+            result,
             jsonFile);
 
         std::ofstream csvFile(IMAGE_PATH_PREFIX "/Result.csv");
 
         CCSVSerializer::process(
             timestampList.data(),
-            result,
+            frames.data(),
             size,
+            result,
             csvFile);
     }
 }

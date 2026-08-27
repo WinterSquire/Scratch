@@ -10,6 +10,14 @@
 #include "Serialization/HTML.hpp"
 #include "Serialization/JSON.hpp"
 
+enum EFrame
+{
+    FrameCurrent,
+    FramePrevious,
+    FrameFirst,
+    NumberOfFrames
+};
+
 /* ---------- 控制器类 */
 
 class CScratchController
@@ -18,45 +26,57 @@ public:
     /**
      * @brief 划痕实验单张图像分析接口
      * 对输入明场/相差图像执行划痕分割、前沿提取与量化指标计算
-     * @param[in] expImage 实验组输入图像
-     * @param[in] conImage 对照组输入图像，可为NULL
+     * @param[in] image 输入图像
      * @param[in] parameter 输入分析参数
      * @param[out] result 输出分析结果
-     * @param[out] invasionData 输出划痕区细胞侵入结果，可为NULL
      * @return 划痕质量枚举 EScratchQuality
      * @note 输入图像分割已完成；内部不做帧间配准，时序序列需上层完成配准后再逐帧调用
      */
     static enum EScratchQuality analyseScratch(
-        const cv::Mat& expImage, 
-        const cv::Mat* conImage, 
-        const struct ScratchParameter& parameter,
-        struct ScratchResult& result,
-        struct ScratchInvasionData* invasionData = NULL);
+        const cv::Mat& image, 
+        const struct ScratchParameter& parameter, 
+        struct ScratchResult& result);
 
     /**
      * @brief 划痕实验时序图像分析接口
      * 对输入明场/相差图像执行划痕分割、前沿提取与量化指标计算
-     * @param[in] expImageList 输入实验组图像的数组指针，不能为NULL
-     * @param[in] conImageList 输入对照组图像的数组指针，用于增殖校正，可为NULL
-     * @param[in] timestampList 输入图像时间戳的数组指针，单位：秒，不能为NULL
+     * @param[in] images 输入图像的数组指针，不能为NULL
+     * @param[in] timestamps 输入图像时间戳的数组指针，单位：秒，不能为NULL
+     * @param[out] frames 输出图像帧分析的数组指针，不能为NULL
      * @param[in] size 输入图像的个数
      * @param[in] parameter 输入分析参数
      * @param[out] result 输出分析结果
-     * @param[out] invasionDataList 输出划痕区细胞侵入结果，数组指针，可为NULL
      * @return int 错误码，0代表处理成功；非0为异常错误码（图像为空、分割失败等）
-     * @note 如果传入conImageList则会进行增值校正计算
      */
     static int analyseScratchKinetic(
-        const cv::Mat* expImageList,
-        const cv::Mat* conImageList,
-        const uint64_t* timestampList,
+        const cv::Mat* images,
+        const uint64_t* timestamps,
+        struct ScratchResultFrame* frames,
         size_t size,
         const struct ScratchParameter& parameter,
-        struct ScratchResultKinetic& result,
-        struct ScratchInvasionData* invasionDataList = NULL);
+        struct ScratchResultKinetic& result);
+
+    /**
+     * @brief 划痕实验时序图像单张分析接口
+     * 对输入明场/相差图像执行划痕分割、前沿提取与量化指标计算
+     * @param[in] image 输入图像
+     * @param[in] timestamps 输入图像时间戳的数组指针，单位：秒，不能为NULL
+     * @param[out] frames 输出图像帧分析的数组指针，不能为NULL
+     * @param[in] parameter 输入分析参数
+     * @param[out] result 输出分析结果
+     * @return int 错误码，0代表处理成功；非0为异常错误码（图像为空、分割失败等）
+     */
+    static int analyseScratchKineticOnce(
+        const cv::Mat& image,
+        const uint64_t timestamps[NumberOfFrames],
+        struct ScratchResultFrame* frames[NumberOfFrames],
+        const struct ScratchParameter& parameter,
+        struct ScratchResultKinetic& result);
 };
 
 /* ---------- 数据结构体 */
+
+typedef int Point2D[2];
 
 /**
  * @brief 划痕质量枚举，标记单帧划痕分析结果可信程度
@@ -74,8 +94,10 @@ enum EScratchQuality
  */
 struct ScratchParameter
 {
-    int fillHole;       ///< 是否填充内部孔洞
-    double dx, dy;      ///< 单像素物理尺寸
+    int fillHole;                   ///< 是否填充内部孔洞
+    int numberOfPartitionLines;     ///< 
+    Point2D* partitionLines;        ///< 
+    double dx, dy;                  ///< 单像素物理尺寸
 };
 
 /**
@@ -88,20 +110,12 @@ struct ScratchArea
 };
 
 /**
- * @brief 细胞侵袭数据
- */
-struct ScratchInvasionData
-{
-    struct ScratchArea area;    ///< 划痕ROI框内细胞面接
-    double ratio;               ///< 划痕框内细胞占比 [0‑1]；=cell_pixel / scratch_roi_total_pixel
-};
-
-/**
  * @brief 划痕单帧分析输出结果结构体
  */
 struct ScratchResult
 {
-    struct ScratchArea area;    ///< 划痕伤口区域面积
+    struct ScratchArea scratchArea;     ///< 划痕伤口区域面积
+    struct ScratchArea invasionArea;    ///< 细胞侵入区域面积
 
     /**
      * @brief 划痕宽度统计
@@ -129,18 +143,9 @@ struct ScratchResult
 /**
  * @brief 划痕时序分析输出结果结构体
  */
-struct ScratchResultFrame
+struct ScratchResultFrame : ScratchResult
 {
-    struct ScratchResult raw;   ///< 原始数据
-
-    /**
-     * @brief 伤口愈合百分比
-     * @note 范围0‑100(%)；基于T0初始划痕面积计算原始愈合率
-     */
-    struct {
-        double raw;             ///< 原始愈合率
-        double corrected;       ///< 校正后愈合率，只有传入实验组时序图才有效
-    } heal;
+    double heal;                ///< 伤口愈合率 (%)
 
     struct {
         double width;           ///< 面积闭合速度，单位 μm/h
@@ -152,6 +157,5 @@ struct ScratchResultFrame
 
 struct ScratchResultKinetic
 {
-    struct ScratchResultFrame* frames;  ///< 时序数据
-    double t50, t90;                    ///< 闭合率首次达到 50% / 90% 所需时间
+    double t50, t90;    ///< 闭合率首次达到 50% / 90% 所需时间
 };
