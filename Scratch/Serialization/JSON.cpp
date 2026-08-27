@@ -1,6 +1,32 @@
-#include "JSON.hpp"
+#include <QJsonArray>
 
+#include "JSON.hpp"
 #include "../Scratch.hpp"
+
+int CJSONSerializer::process(
+    const uint64_t *timestampList, 
+    const ScratchResultKinetic &data, 
+    size_t size, 
+    std::ostream &os)
+{
+    QJsonObject root;
+    QJsonArray frames, timestamps;
+
+    for (int i = 0; i < size; ++i)
+    {
+        timestamps.push_back((qint64)timestampList[i]);
+        frames.push_back(toJson(data.frames[i]));
+    }
+
+    root["t50"] = data.t50;
+    root["t90"] = data.t90;
+    root["frames"] = frames;
+    root["timestamps"] = timestamps;
+
+    os << QJsonDocument(root).toJson().constData();
+
+    return 0;
+}
 
 QJsonObject toJson(const ScratchParameter& data)
 {

@@ -55,7 +55,6 @@ TEST_SUITE("SerializeScratchTest")
 
         std::ofstream file("test.csv");
 
-
         CCSVSerializer::process(
             testScratchKinetic.timestamp,
             testScratchKinetic.result,
