@@ -14,7 +14,7 @@ public:
         std::ostream& os);
 };
 
-#define toJsonString(data) (QJsonDocument(toJson(data)).toJson(QJsonDocument::Compact))
+#define toJsonString(data) (QJsonDocument(toJson(data)).toJson())
 #define fromJsonString(data, json) fromJson(data, (QJsonDocument::fromJson(jsonUtf8)));
 
 QJsonObject toJson(const struct ScratchParameter& data);

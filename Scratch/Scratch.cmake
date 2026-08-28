@@ -9,6 +9,7 @@ set(ScratchSource
 
     # 轮廓处理算法
     Scratch/Contour/Gaussian.cpp
+    Scratch/Contour/Skeleton.cpp
 
     # 序列化
     Scratch/Serialization/CSV.cpp

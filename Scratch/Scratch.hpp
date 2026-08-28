@@ -10,12 +10,54 @@
 #include "Serialization/HTML.hpp"
 #include "Serialization/JSON.hpp"
 
+#define HALT(msg) 
+
+#define SetFlag32(flags, flag, b)  (flags = (b) ? ((flags) | (1 >> (flag))) : ((flags) & ~(1 >> (flag))))
+#define GetFlag32(flags, flag)     (((flags) & (1 >> (flag))) != 0)
+
+/* ---------- enums */
+
+enum EScratchParameterFlag
+{
+    ScratchParameterFlagDrawDebugImage,
+};
+
+enum EScratchAnalyseStage
+{
+    ScratchAnalyseStageMasking,
+    ScratchAnalyseStageContouring,
+    NumberOfScratchAnalyseStage
+};
+
 enum EFrame
 {
     FrameCurrent,
     FramePrevious,
     FrameFirst,
     NumberOfFrames
+};
+
+enum EMasking
+{
+    MaskingNoEnvelope,
+    MaskingEnvelope,
+};
+
+enum EContouring
+{
+    ContouringGaussian,
+    ContouringSkeleton,
+};
+
+/**
+ * @brief 划痕质量枚举，标记单帧划痕分析结果可信程度
+ */
+enum EScratchQuality
+{
+    ScratchQualityNormal,   ///< 正常，划痕分割结果可信
+    ScratchQualitySmall,    ///< 划痕过小
+    ScratchQualityUneven,   ///< 划痕不均匀，左右前沿差异大，量化结果可信度下降
+    ScratchQualityAbnormal  ///< 异常：未检测划痕/划痕面积过小/分割置信度低，结果仅供参考
 };
 
 /* ---------- 控制器类 */
@@ -34,7 +76,7 @@ public:
      */
     static enum EScratchQuality analyseScratch(
         const cv::Mat& image, 
-        const struct ScratchParameter& parameter, 
+        struct ScratchParameter& parameter, 
         struct ScratchResult& result);
 
     /**
@@ -53,7 +95,7 @@ public:
         const uint64_t* timestamps,
         struct ScratchResultFrame* frames,
         size_t size,
-        const struct ScratchParameter& parameter,
+        struct ScratchParameter& parameter,
         struct ScratchResultKinetic& result);
 
     /**
@@ -70,7 +112,7 @@ public:
         const cv::Mat& image,
         const uint64_t timestamps[NumberOfFrames],
         struct ScratchResultFrame* frames[NumberOfFrames],
-        const struct ScratchParameter& parameter,
+        struct ScratchParameter& parameter,
         struct ScratchResultKinetic& result);
 };
 
@@ -78,15 +120,9 @@ public:
 
 typedef int Point2D[2];
 
-/**
- * @brief 划痕质量枚举，标记单帧划痕分析结果可信程度
- */
-enum EScratchQuality
+struct MaksingEnvelopeParameter
 {
-    ScratchQualityNormal,   ///< 正常，划痕分割结果可信
-    ScratchQualitySmall,    ///< 划痕过小
-    ScratchQualityUneven,   ///< 划痕不均匀，左右前沿差异大，量化结果可信度下降
-    ScratchQualityAbnormal  ///< 异常：未检测划痕/划痕面积过小/分割置信度低，结果仅供参考
+    int kernelSize;
 };
 
 /**
@@ -94,10 +130,20 @@ enum EScratchQuality
  */
 struct ScratchParameter
 {
-    int fillHole;                   ///< 是否填充内部孔洞
-    int numberOfPartitionLines;     ///< 
-    Point2D* partitionLines;        ///< 
+    int flags;
     double dx, dy;                  ///< 单像素物理尺寸
+
+    struct {
+        int method;                 ///< 
+        const void* data;           ///< 
+    } masking, contouring;
+
+    struct {
+        Point2D* lines;             ///< 
+        uint64_t size;              ///< 
+    } partition;    
+    
+    cv::Mat debugImages[NumberOfScratchAnalyseStage];
 };
 
 /**

@@ -8,6 +8,8 @@
 #include "Gaussian.hpp"
 #include "../Scratch.hpp"
 
+#define GAUSSIAN_DEBUG_IMAGE_LINES 100
+
 static void fillNan1D(const cv::Mat &input, cv::Mat &output)
 {
     CV_Assert(input.cols == 1 || input.rows == 1);
@@ -212,7 +214,7 @@ static void buildResult(const cv::Mat &left,
     result.width.std = widthSTD;
 }
 
-int CContouringGaussian::process(const cv::Mat *mask, ScratchResult *result)
+int CContouringGaussian::process(const cv::Mat *mask, ScratchResult *result,  struct ScratchParameter* parameter)
 {
     cv::Mat left, right, center;
 
@@ -229,6 +231,33 @@ int CContouringGaussian::process(const cv::Mat *mask, ScratchResult *result)
 
     result->roughness.left = calculateTortuosity(left);
     result->roughness.right = calculateTortuosity(right);
+
+    // draw debug image
+    do {
+        if (GetFlag32(parameter->flags, ScratchParameterFlagDrawDebugImage))
+            break;
+
+        cv::Mat &debugImage = parameter->debugImages[ScratchAnalyseStageContouring];
+        const double step = static_cast<double>(mask->rows) / GAUSSIAN_DEBUG_IMAGE_LINES;
+        for (int index = 0; index < GAUSSIAN_DEBUG_IMAGE_LINES; ++index) {
+            const int y = std::min(cvRound(index * step), mask->rows - 1);
+            const double leftX = smoothedLeft.at<double>(y);
+            const double rightX = smoothedRight.at<double>(y);
+            if (!std::isfinite(leftX) || !std::isfinite(rightX))
+                continue;
+
+            const int leftPoint = std::clamp(cvRound(leftX), 0, mask->cols - 1);
+            const int rightPoint = std::clamp(cvRound(rightX), 0, mask->cols - 1);
+            const int centerPoint = (leftPoint + rightPoint) / 2;
+            cv::line(debugImage, cv::Point(leftPoint, y),
+                     cv::Point(rightPoint, y), cv::Scalar(0, 255, 255), 1,
+                     cv::LINE_8);
+            debugImage.at<cv::Vec3b>(y, leftPoint) = cv::Vec3b(255, 0, 0);
+            debugImage.at<cv::Vec3b>(y, rightPoint) = cv::Vec3b(0, 0, 255);
+            debugImage.at<cv::Vec3b>(y, centerPoint) = cv::Vec3b(0, 255, 0);
+        }
+
+    } while (0);
     
     return 0;
 }

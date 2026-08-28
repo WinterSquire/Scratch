@@ -18,7 +18,7 @@ public:
      * @param[in] data 额外的数据，可选
      * @return 返回错误码，0为成功
      */
-    virtual int process(const cv::Mat* image, cv::Mat* mask, const void* data = nullptr) = 0;
+    virtual int process(const cv::Mat* image, cv::Mat* mask, const struct ScratchParameter* parameter = nullptr) = 0;
 };
 
 /*---------- prototypes */

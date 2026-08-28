@@ -7,6 +7,7 @@
 #include "Mask/NoEnvelope.hpp"
 
 #include "Contour/Gaussian.hpp"
+#include "Contour/Skeleton.hpp"
 
 union MaskingStorage
 {
@@ -17,35 +18,62 @@ union MaskingStorage
 union ContouringStorage
 {
     char gaussian[sizeof(class CContouringGaussian)];
+    char skeleton[sizeof(class CContouringSkeleton)];
 };
 
 inline static EScratchQuality analyseScratch(
     const cv::Mat& image, 
-    const struct ScratchParameter& parameter, 
+    struct ScratchParameter& parameter, 
     struct ScratchResult& result)
 {
     cv::Mat mask;
     int errorCode;
     EScratchQuality quality = ScratchQualityNormal;
-    // 初始化算法接口
+    
     MaskingStorage maskingStorage{};
     ContouringStorage contouringStorage{};
     IMasking* masking = (IMasking*)&maskingStorage;
     IContouring* contouring = (IContouring*)&contouringStorage;
 
-    // 第一版：使用非包络法和高斯插值法
+    // initinalize algorithm interface
+    switch (parameter.contouring.method)
     {
-        new (&maskingStorage) CMaskingNoEnvelope();
-        new (&contouringStorage) CContouringGaussian();
-    }    
+        case ContouringGaussian: new (&contouringStorage) CContouringGaussian(); break;
+        case ContouringSkeleton: new (&contouringStorage) CContouringSkeleton(); break;
+        default: HALT("out of range");
+    }
 
-    errorCode = masking->process(&image, &mask);
+    switch (parameter.masking.method)
+    {
+        case MaskingNoEnvelope: new (&maskingStorage) CMaskingNoEnvelope(); break;
+        case MaskingEnvelope: new (&maskingStorage) CMaskingEnvelope(); break;
+        default: HALT("out of range");
+    } 
+
+    // process image mask
+    {
+        errorCode = masking->process(&image, &mask, &parameter);
     
-    if (errorCode)
-        return ScratchQualityAbnormal;
+        if (errorCode)
+            return ScratchQualityAbnormal;
 
-    // 统计image和mask的像素数量，并计算汇合度
-    {
+        if (GetFlag32(parameter.flags, ScratchParameterFlagDrawDebugImage))
+        {
+            cv::Mat &debugImage = parameter.debugImages[ScratchAnalyseStageMasking];
+            if (image.channels() == 1)
+                cv::cvtColor(image, debugImage, cv::COLOR_GRAY2BGR);
+            else if (image.channels() == 4)
+                cv::cvtColor(image, debugImage, cv::COLOR_BGRA2BGR);
+            else
+                debugImage = image.clone();
+
+            // mask 白色区域显示为蓝色，mask 黑色区域保留原图。
+            debugImage.setTo(cv::Scalar(255, 0, 0), mask);
+
+            parameter.debugImages[ScratchAnalyseStageContouring] = debugImage.clone();
+        }
+
+        // 统计image和mask的像素数量，并计算汇合度
         result.scratchArea.pixel = static_cast<double>(cv::countNonZero(mask));
         result.scratchArea.um = result.scratchArea.pixel * parameter.dx * parameter.dy;
 
@@ -58,14 +86,17 @@ inline static EScratchQuality analyseScratch(
             : 0.0;
     }
 
-    errorCode = contouring->process(&mask, &result);
+    // process image contour
+    {
+        errorCode = contouring->process(&mask, &result, &parameter);
 
-    if (errorCode)
-        return ScratchQualityAbnormal;
+        if (errorCode)
+            return ScratchQualityAbnormal;
 
-    result.width.avg *= parameter.dx;
-    result.width.std *= parameter.dx;
-    result.width.med *= parameter.dx;
+        result.width.avg *= parameter.dx;
+        result.width.std *= parameter.dx;
+        result.width.med *= parameter.dx;
+    }
 
     if (std::round(result.width.std / result.width.avg * 100) > 25.0)
         quality = ScratchQualityUneven; // 划痕不均匀
@@ -86,7 +117,7 @@ inline static void calculateScratchResultKinetic(
 
 EScratchQuality CScratchController::analyseScratch(
     const cv::Mat& image, 
-    const struct ScratchParameter& parameter, 
+    struct ScratchParameter& parameter, 
     struct ScratchResult& result)
 {
     return ::analyseScratch(image, parameter, result);
@@ -97,7 +128,7 @@ int CScratchController::analyseScratchKinetic(
     const uint64_t* timestamps,
     struct ScratchResultFrame* frames,
     size_t size,
-    const struct ScratchParameter& parameter,
+    struct ScratchParameter& parameter,
     struct ScratchResultKinetic& result)
 {
     int level = 0;
@@ -151,7 +182,7 @@ int CScratchController::analyseScratchKineticOnce(
     const cv::Mat& image,
     const uint64_t timestamps[NumberOfFrames],
     struct ScratchResultFrame* frames[NumberOfFrames],
-    const struct ScratchParameter& parameter,
+    struct ScratchParameter& parameter,
     struct ScratchResultKinetic& result)
 {
     auto timeElapsed = (timestamps[FrameCurrent] - timestamps[FramePrevious]) / 3600.0;

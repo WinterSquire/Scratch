@@ -9,5 +9,5 @@
 class CMaskingNoEnvelope : public IMasking
 {
 public:
-    virtual int process(const cv::Mat* image, cv::Mat* mask, const void* data = nullptr) override;
+    virtual int process(const cv::Mat* image, cv::Mat* mask, const struct ScratchParameter* parameter = nullptr) override;
 };

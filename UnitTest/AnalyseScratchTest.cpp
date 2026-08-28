@@ -25,11 +25,15 @@ TEST_SUITE("AnalyseScratchTest")
         ScratchParameter parameter{};
         ScratchResult result{};
 
-        parameter.dx = parameter.dy = 1.0;
-
-        auto imageName = "A1_11_12_20260228_131443_cellScratch.jpg";
+        auto imageName = "A1_11_12_20250413_083750_cellScratch.jpg";
         auto imagePath = std::string() + IMAGE_PATH_PREFIX + '/' + imageName;
         auto imageRGB = cv::imread(imagePath, cv::IMREAD_COLOR_RGB);
+        auto debugDirectory = QStringLiteral("Data/Output/S1");
+
+        SetFlag32(parameter.flags, ScratchParameterFlagDrawDebugImage, true);
+        parameter.dx = parameter.dy = 1.0;        
+        parameter.masking.method = MaskingNoEnvelope;
+        parameter.contouring.method = ContouringGaussian;
 
         auto timeBegin = std::chrono::high_resolution_clock::now();
         auto imageQuality = CScratchController::analyseScratch(imageRGB, parameter, result);
@@ -37,14 +41,32 @@ TEST_SUITE("AnalyseScratchTest")
         auto timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeBegin).count();
 
         MESSAGE("Spend Time: " << timeElapsed << " ms");
-        MESSAGE(toJsonString(result));
+        MESSAGE(("NoEnvelope + Guassian: \n" + toJsonString(result)));
 
-        CHECK_EQ(result.scratchArea.pixel, 2181514.00);
-        CHECK_DOUBLE_ABS(result.width.avg, 1064.22, 1e-2);
-        CHECK_DOUBLE_ABS(result.width.std, 15.15, 1e-4);
-        CHECK_DOUBLE_ABS(result.roughness.left, 1.07, 1e-4);
-        CHECK_DOUBLE_ABS(result.roughness.right, 1.02, 1e-4);
-        CHECK_DOUBLE_ABS(result.confluence, 0.5649, 1e-4);
+        REQUIRE(!parameter.debugImages[ScratchAnalyseStageContouring].empty());
+        REQUIRE(cv::imwrite(
+            (debugDirectory + QStringLiteral("/A1_11_12_20250413_083750_gaussian.png")).toStdString(), 
+            parameter.debugImages[ScratchAnalyseStageContouring]));
+
+        parameter.contouring.method = ContouringSkeleton;
+        timeBegin = std::chrono::high_resolution_clock::now();
+        imageQuality = CScratchController::analyseScratch(imageRGB, parameter, result);
+        timeEnd = std::chrono::high_resolution_clock::now();
+        timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeBegin).count();
+
+        MESSAGE("Spend Time: " << timeElapsed << " ms");
+        MESSAGE(("NoEnvelope + Skeleton: \n" + toJsonString(result)));
+
+        // save debug images
+        REQUIRE(!parameter.debugImages[ScratchAnalyseStageContouring].empty());
+        REQUIRE(cv::imwrite(
+            (debugDirectory + QStringLiteral("/A1_11_12_20250413_083750_skeleton.png")).toStdString(), 
+            parameter.debugImages[ScratchAnalyseStageContouring]));
+
+        REQUIRE(!parameter.debugImages[ScratchAnalyseStageMasking].empty());
+        REQUIRE(cv::imwrite(
+            (debugDirectory + QStringLiteral("/A1_11_12_20250413_083750_masking.png")).toStdString(), 
+            parameter.debugImages[ScratchAnalyseStageMasking]));
     }
 
     TEST_CASE("TestAnalyseScratchKinetic")

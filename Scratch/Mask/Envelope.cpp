@@ -1,21 +1,22 @@
-#include "Envelope.hpp"
-
 #include <opencv2/opencv.hpp>
+
+#include "Envelope.hpp"
+#include "../Scratch.hpp"
 
 #define MASKING_ENVELOPE_KERNEL_SIZE 41
 
-int CMaskingEnvelope::process(const cv::Mat *image, cv::Mat *mask, const void *data)
+int CMaskingEnvelope::process(const cv::Mat *image, cv::Mat *mask, const struct ScratchParameter* parameter)
 {
     struct MaksingEnvelopeParameter defaultParameter;
-    const struct MaksingEnvelopeParameter* parameter = (struct MaksingEnvelopeParameter *)data;
+    const struct MaksingEnvelopeParameter* _parameter = (struct MaksingEnvelopeParameter *)parameter->masking.data;
 
     if (image == nullptr || mask == nullptr || image->empty() || image->channels() != 3)
         return 1;
 
-    if (parameter == NULL)
+    if (parameter->masking.data == NULL)
     {
         defaultParameter.kernelSize = MASKING_ENVELOPE_KERNEL_SIZE;
-        parameter = &defaultParameter;
+        _parameter = &defaultParameter;
     }
 
     cv::Mat hsv;
@@ -33,7 +34,7 @@ int CMaskingEnvelope::process(const cv::Mat *image, cv::Mat *mask, const void *d
     selected.convertTo(selected, CV_8UC1, 1.0 / 255.0);
 
     const cv::Mat kernel = cv::getStructuringElement(
-        cv::MORPH_ELLIPSE, cv::Size(parameter->kernelSize, parameter->kernelSize));
+        cv::MORPH_ELLIPSE, cv::Size(_parameter->kernelSize, _parameter->kernelSize));
 
     cv::Mat closed;
     cv::morphologyEx(selected, closed, cv::MORPH_CLOSE, kernel);

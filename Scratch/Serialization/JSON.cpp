@@ -32,7 +32,6 @@ int CJSONSerializer::process(
 QJsonObject toJson(const ScratchParameter& data)
 {
     return QJsonObject::fromVariantMap({
-        {"fillHole", data.fillHole},
         {"dx", data.dx},
         {"dy", data.dy},
     });
@@ -40,7 +39,6 @@ QJsonObject toJson(const ScratchParameter& data)
 
 int fromJson(ScratchParameter& data, const QJsonObject& json)
 {
-    data.fillHole = json.value("fillHole").toInt();
     data.dx = json.value("dx").toDouble();
     data.dy = json.value("dy").toDouble();
     

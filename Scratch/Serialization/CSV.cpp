@@ -6,8 +6,6 @@
 #include "CSV.hpp"
 #include "../Scratch.hpp"
 
-#define HALT(msg)
-
 enum EColumn
 {
     ColumnDate,
