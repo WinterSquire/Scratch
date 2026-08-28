@@ -3,6 +3,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+namespace cv { class Mat; }
+
 class CJSONSerializer
 {
 public:
@@ -11,6 +13,12 @@ public:
         const struct ScratchResultFrame* frames,
         size_t size, 
         const struct ScratchResultKinetic& data, 
+        std::ostream& os);
+
+    static int process(
+        const cv::Mat* images,
+        const cv::Mat* debugImages[NumberOfScratchAnalyseStage],
+        size_t size, 
         std::ostream& os);
 };
 

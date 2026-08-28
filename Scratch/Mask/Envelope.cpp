@@ -5,15 +5,15 @@
 
 #define MASKING_ENVELOPE_KERNEL_SIZE 41
 
-int CMaskingEnvelope::process(const cv::Mat *image, cv::Mat *mask, const struct ScratchParameter* parameter)
+int CMaskingEnvelope::process(const cv::Mat *image, cv::Mat *mask, const void* data, cv::Mat* debugImage)
 {
     struct MaksingEnvelopeParameter defaultParameter;
-    const struct MaksingEnvelopeParameter* _parameter = (struct MaksingEnvelopeParameter *)parameter->masking.data;
+    const struct MaksingEnvelopeParameter* _parameter = (struct MaksingEnvelopeParameter *)data;
 
     if (image == nullptr || mask == nullptr || image->empty() || image->channels() != 3)
         return 1;
 
-    if (parameter->masking.data == NULL)
+    if (data == NULL)
     {
         defaultParameter.kernelSize = MASKING_ENVELOPE_KERNEL_SIZE;
         _parameter = &defaultParameter;

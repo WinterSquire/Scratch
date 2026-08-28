@@ -201,14 +201,14 @@ std::vector<cv::Point> skeletonPath(const cv::Mat &skeleton, const cv::Mat &dist
 // 返回 8 位单通道中心线图：中心线像素为 255，其余为 0。
 // 该引用在下一次 process 或对象析构前有效。
 // 返回值约定：0 表示处理完成（包括空掩膜），1 表示参数或输入格式错误。
-int CContouringSkeleton::process(const cv::Mat *mask, ScratchResult *result, struct ScratchParameter* parameter)
+int CContouringSkeleton::process(const cv::Mat& mask, struct ScratchResult& result, const void* data, cv::Mat* debugImage)
 {
     cv::Mat centerline_;
-    if (mask == nullptr || result == nullptr || mask->empty() || mask->channels() != 1)
+    if (mask.empty() || mask.channels() != 1)
         return 1;
 
     cv::Mat binary;
-    cv::compare(*mask, 0, binary, cv::CMP_GT);
+    cv::compare(mask, 0, binary, cv::CMP_GT);
 
     // 距离变换给出每个前景像素到边界的距离，中轴处的 2 * distance 即局部宽度。
     cv::Mat distance;
@@ -250,33 +250,23 @@ int CContouringSkeleton::process(const cv::Mat *mask, ScratchResult *result, str
     // 这里按设计文档将宽度写入像素单位；若需要物理单位，调用方应乘 umPerPixel。
     const double sum = std::accumulate(effectiveWidths.begin(), effectiveWidths.end(), 0.0);
 
-    result->width.avg = sum / effectiveWidths.size();
+    result.width.avg = sum / effectiveWidths.size();
     double variance = 0.0;
     for (double width : effectiveWidths)
-        variance += (width - result->width.avg) * (width - result->width.avg);
-    result->width.std = std::sqrt(variance / effectiveWidths.size());
+        variance += (width - result.width.avg) * (width - result.width.avg);
+    result.width.std = std::sqrt(variance / effectiveWidths.size());
     std::sort(effectiveWidths.begin(), effectiveWidths.end());
     const size_t middle = effectiveWidths.size() / 2;
-    result->width.med = effectiveWidths.size() % 2 != 0
+    result.width.med = effectiveWidths.size() % 2 != 0
         ? effectiveWidths[middle]
         : (effectiveWidths[middle - 1] + effectiveWidths[middle]) / 2.0;
 
-    // 对外保留最终主干，而不是细化后的全部分叉骨架。
-    centerline_.setTo(0);
-    for (const cv::Point &point : path)
-        centerline_.at<uchar>(point) = 255;
-
-    // draw debug image
-    do {
-        if (!GetFlag32(parameter->flags, ScratchParameterFlagDrawDebugImage))
-            break;
-
+    if (debugImage != NULL)
+    {
         // 在二值掩膜上叠加最终主干，红色像素便于直接检查路径选择结果。
         for (const cv::Point &point : path)
-            parameter->debugImages[ScratchAnalyseStageContouring].at<cv::Vec3b>(point) = cv::Vec3b(0, 0, 255);
-
-    } while (0);
-
+            debugImage->at<cv::Vec3b>(point) = cv::Vec3b(0, 0, 255);
+    }
 
     return 0;
 }

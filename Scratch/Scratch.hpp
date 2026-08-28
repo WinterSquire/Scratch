@@ -6,10 +6,6 @@
 #include <cstdint>
 #include <opencv2/opencv.hpp>
 
-#include "Serialization/CSV.hpp"
-#include "Serialization/HTML.hpp"
-#include "Serialization/JSON.hpp"
-
 #define HALT(msg) 
 
 #define SetFlag32(flags, flag, b)  (flags = (b) ? ((flags) | (1 >> (flag))) : ((flags) & ~(1 >> (flag))))
@@ -19,7 +15,7 @@
 
 enum EScratchParameterFlag
 {
-    ScratchParameterFlagDrawDebugImage,
+    
 };
 
 enum EScratchAnalyseStage
@@ -77,7 +73,8 @@ public:
     static enum EScratchQuality analyseScratch(
         const cv::Mat& image, 
         struct ScratchParameter& parameter, 
-        struct ScratchResult& result);
+        struct ScratchResult& result,
+        cv::Mat* debugImages[NumberOfScratchAnalyseStage] = NULL);
 
     /**
      * @brief 划痕实验时序图像分析接口
@@ -96,7 +93,8 @@ public:
         struct ScratchResultFrame* frames,
         size_t size,
         struct ScratchParameter& parameter,
-        struct ScratchResultKinetic& result);
+        struct ScratchResultKinetic& result,
+        cv::Mat* debugImages[NumberOfScratchAnalyseStage] = NULL);
 
     /**
      * @brief 划痕实验时序图像单张分析接口
@@ -113,7 +111,8 @@ public:
         const uint64_t timestamps[NumberOfFrames],
         struct ScratchResultFrame* frames[NumberOfFrames],
         struct ScratchParameter& parameter,
-        struct ScratchResultKinetic& result);
+        struct ScratchResultKinetic& result,
+        cv::Mat* debugImages[NumberOfScratchAnalyseStage] = NULL);
 };
 
 /* ---------- 数据结构体 */
@@ -142,8 +141,6 @@ struct ScratchParameter
         Point2D* lines;             ///< 
         uint64_t size;              ///< 
     } partition;    
-    
-    cv::Mat debugImages[NumberOfScratchAnalyseStage];
 };
 
 /**
@@ -205,3 +202,7 @@ struct ScratchResultKinetic
 {
     double t50, t90;    ///< 闭合率首次达到 50% / 90% 所需时间
 };
+
+#include "Serialization/CSV.hpp"
+#include "Serialization/HTML.hpp"
+#include "Serialization/JSON.hpp"

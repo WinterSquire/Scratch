@@ -7,7 +7,7 @@
 #include <limits>
 #include <vector>
 
-int CMaskingNoEnvelope::process(const cv::Mat *image, cv::Mat *mask, const struct ScratchParameter* parameter)
+int CMaskingNoEnvelope::process(const cv::Mat *image, cv::Mat *mask, const void* data, cv::Mat* debugImage)
 {
     if (image == nullptr || mask == nullptr || image->empty() || image->channels() != 3)
         return 1;

@@ -5,5 +5,5 @@
 class CContouringGaussian : public IContouring
 {
 public:
-    int process(const cv::Mat* mask, struct ScratchResult* result,  struct ScratchParameter* parameter = nullptr) override;
+    int process(const cv::Mat& mask, struct ScratchResult& result, const void* data = nullptr, cv::Mat* debugImage = nullptr) override;
 };

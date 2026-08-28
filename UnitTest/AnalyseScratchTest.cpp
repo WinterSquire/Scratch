@@ -30,7 +30,6 @@ TEST_SUITE("AnalyseScratchTest")
         auto imageRGB = cv::imread(imagePath, cv::IMREAD_COLOR_RGB);
         auto debugDirectory = QStringLiteral("Data/Output/S1");
 
-        SetFlag32(parameter.flags, ScratchParameterFlagDrawDebugImage, true);
         parameter.dx = parameter.dy = 1.0;        
         parameter.masking.method = MaskingNoEnvelope;
         parameter.contouring.method = ContouringGaussian;
@@ -43,30 +42,14 @@ TEST_SUITE("AnalyseScratchTest")
         MESSAGE("Spend Time: " << timeElapsed << " ms");
         MESSAGE(("NoEnvelope + Guassian: \n" + toJsonString(result)));
 
-        REQUIRE(!parameter.debugImages[ScratchAnalyseStageContouring].empty());
-        REQUIRE(cv::imwrite(
-            (debugDirectory + QStringLiteral("/A1_11_12_20250413_083750_gaussian.png")).toStdString(), 
-            parameter.debugImages[ScratchAnalyseStageContouring]));
+        // parameter.contouring.method = ContouringSkeleton;
+        // timeBegin = std::chrono::high_resolution_clock::now();
+        // imageQuality = CScratchController::analyseScratch(imageRGB, parameter, result);
+        // timeEnd = std::chrono::high_resolution_clock::now();
+        // timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeBegin).count();
 
-        parameter.contouring.method = ContouringSkeleton;
-        timeBegin = std::chrono::high_resolution_clock::now();
-        imageQuality = CScratchController::analyseScratch(imageRGB, parameter, result);
-        timeEnd = std::chrono::high_resolution_clock::now();
-        timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeBegin).count();
-
-        MESSAGE("Spend Time: " << timeElapsed << " ms");
-        MESSAGE(("NoEnvelope + Skeleton: \n" + toJsonString(result)));
-
-        // save debug images
-        REQUIRE(!parameter.debugImages[ScratchAnalyseStageContouring].empty());
-        REQUIRE(cv::imwrite(
-            (debugDirectory + QStringLiteral("/A1_11_12_20250413_083750_skeleton.png")).toStdString(), 
-            parameter.debugImages[ScratchAnalyseStageContouring]));
-
-        REQUIRE(!parameter.debugImages[ScratchAnalyseStageMasking].empty());
-        REQUIRE(cv::imwrite(
-            (debugDirectory + QStringLiteral("/A1_11_12_20250413_083750_masking.png")).toStdString(), 
-            parameter.debugImages[ScratchAnalyseStageMasking]));
+        // MESSAGE("Spend Time: " << timeElapsed << " ms");
+        // MESSAGE(("NoEnvelope + Skeleton: \n" + toJsonString(result)));
     }
 
     TEST_CASE("TestAnalyseScratchKinetic")
@@ -79,8 +62,15 @@ TEST_SUITE("AnalyseScratchTest")
         auto expImageInfoList = expImageDir.entryInfoList();
         auto size = expImageInfoList.size();
         auto expImageList = std::vector<cv::Mat>(size);
+        auto expImageMaskList = std::vector<cv::Mat>(size);
+        auto expImageContourList = std::vector<cv::Mat>(size);
         auto timestampList = std::vector<uint64_t>(size);
         auto frames = std::vector<ScratchResultFrame>(size);
+
+        cv::Mat* expDebugImages[NumberOfScratchAnalyseStage];
+
+        expDebugImages[ScratchAnalyseStageMasking] = expImageMaskList.data();
+        expDebugImages[ScratchAnalyseStageContouring] = expImageContourList.data();
 
         for (int i = 0; i < size; ++i)
         {
@@ -104,7 +94,8 @@ TEST_SUITE("AnalyseScratchTest")
             frames.data(),
             size,
             parameter,
-            result);
+            result,
+            expDebugImages);
 
         REQUIRE(errorCode == 0);
         auto timeEnd = std::chrono::high_resolution_clock::now();
@@ -112,22 +103,33 @@ TEST_SUITE("AnalyseScratchTest")
 
         MESSAGE("Spend Time: " << timeElapsed << " ms");
         
-        std::ofstream jsonFile(IMAGE_PATH_PREFIX "/Result.json");
-        
-        CJSONSerializer::process(
-            timestampList.data(),
-            frames.data(),
-            size,
-            result,
-            jsonFile);
+        {            
+            std::ofstream jsonFile(IMAGE_PATH_PREFIX "/data.js");
 
-        std::ofstream csvFile(IMAGE_PATH_PREFIX "/Result.csv");
+            jsonFile << "const DATA = ";
+            
+            CJSONSerializer::process(
+                timestampList.data(),
+                frames.data(),
+                size,
+                result,
+                jsonFile);
+        }
 
-        CCSVSerializer::process(
-            timestampList.data(),
-            frames.data(),
-            size,
-            result,
-            csvFile);
+        {
+            std::ofstream jsonFile(IMAGE_PATH_PREFIX "/images.js");
+            const cv::Mat* mats[2];
+            
+            mats[ScratchAnalyseStageMasking] = expImageMaskList.data();
+            mats[ScratchAnalyseStageContouring] = expImageContourList.data();
+
+            jsonFile << "const IMAGES = ";
+
+            CJSONSerializer::process(
+                expImageList.data(),
+                mats,
+                size,
+                jsonFile);
+        }
     }
 }

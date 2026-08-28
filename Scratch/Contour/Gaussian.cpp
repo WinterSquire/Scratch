@@ -214,47 +214,46 @@ static void buildResult(const cv::Mat &left,
     result.width.std = widthSTD;
 }
 
-int CContouringGaussian::process(const cv::Mat *mask, ScratchResult *result,  struct ScratchParameter* parameter)
+int CContouringGaussian::process(const cv::Mat& mask, struct ScratchResult& result, const void* data, cv::Mat* debugImage)
 {
     cv::Mat left, right, center;
 
-    if (mask == nullptr || mask->empty() || mask->channels() != 1 ||
-        result == nullptr)
+    if (mask.empty() || mask.channels() != 1)
         return 1;
 
-    getRowBoundaries(*mask, left, right);
+    getRowBoundaries(mask, left, right);
     cv::Mat smoothedLeft = left;
     cv::Mat smoothedRight = right;
     smoothBoundaries(smoothedLeft, smoothedRight, 10.0);
     // buildCenterline(smoothedLeft, smoothedRight, center);
-    buildResult(smoothedLeft, smoothedRight, *result);
+    buildResult(smoothedLeft, smoothedRight, result);
 
-    result->roughness.left = calculateTortuosity(left);
-    result->roughness.right = calculateTortuosity(right);
+    result.roughness.left = calculateTortuosity(left);
+    result.roughness.right = calculateTortuosity(right);
 
     // draw debug image
     do {
-        if (GetFlag32(parameter->flags, ScratchParameterFlagDrawDebugImage))
+        if (debugImage == NULL)
             break;
 
-        cv::Mat &debugImage = parameter->debugImages[ScratchAnalyseStageContouring];
-        const double step = static_cast<double>(mask->rows) / GAUSSIAN_DEBUG_IMAGE_LINES;
+        auto& _debugImage = *debugImage;
+        const double step = static_cast<double>(mask.rows) / GAUSSIAN_DEBUG_IMAGE_LINES;
         for (int index = 0; index < GAUSSIAN_DEBUG_IMAGE_LINES; ++index) {
-            const int y = std::min(cvRound(index * step), mask->rows - 1);
+            const int y = std::min(cvRound(index * step), mask.rows - 1);
             const double leftX = smoothedLeft.at<double>(y);
             const double rightX = smoothedRight.at<double>(y);
             if (!std::isfinite(leftX) || !std::isfinite(rightX))
                 continue;
 
-            const int leftPoint = std::clamp(cvRound(leftX), 0, mask->cols - 1);
-            const int rightPoint = std::clamp(cvRound(rightX), 0, mask->cols - 1);
+            const int leftPoint = std::clamp(cvRound(leftX), 0, mask.cols - 1);
+            const int rightPoint = std::clamp(cvRound(rightX), 0, mask.cols - 1);
             const int centerPoint = (leftPoint + rightPoint) / 2;
-            cv::line(debugImage, cv::Point(leftPoint, y),
+            cv::line(_debugImage, cv::Point(leftPoint, y),
                      cv::Point(rightPoint, y), cv::Scalar(0, 255, 255), 1,
                      cv::LINE_8);
-            debugImage.at<cv::Vec3b>(y, leftPoint) = cv::Vec3b(255, 0, 0);
-            debugImage.at<cv::Vec3b>(y, rightPoint) = cv::Vec3b(0, 0, 255);
-            debugImage.at<cv::Vec3b>(y, centerPoint) = cv::Vec3b(0, 255, 0);
+            _debugImage.at<cv::Vec3b>(y, leftPoint) = cv::Vec3b(255, 0, 0);
+            _debugImage.at<cv::Vec3b>(y, rightPoint) = cv::Vec3b(0, 0, 255);
+            _debugImage.at<cv::Vec3b>(y, centerPoint) = cv::Vec3b(0, 255, 0);
         }
 
     } while (0);

@@ -24,7 +24,8 @@ union ContouringStorage
 inline static EScratchQuality analyseScratch(
     const cv::Mat& image, 
     struct ScratchParameter& parameter, 
-    struct ScratchResult& result)
+    struct ScratchResult& result,
+    cv::Mat* debugImages[NumberOfScratchAnalyseStage])
 {
     cv::Mat mask;
     int errorCode;
@@ -51,27 +52,11 @@ inline static EScratchQuality analyseScratch(
     } 
 
     // process image mask
-    {
-        errorCode = masking->process(&image, &mask, &parameter);
+    do {
+        errorCode = masking->process(&image, &mask, parameter.masking.data, debugImages ? debugImages[ScratchAnalyseStageMasking] : NULL);
     
         if (errorCode)
             return ScratchQualityAbnormal;
-
-        if (GetFlag32(parameter.flags, ScratchParameterFlagDrawDebugImage))
-        {
-            cv::Mat &debugImage = parameter.debugImages[ScratchAnalyseStageMasking];
-            if (image.channels() == 1)
-                cv::cvtColor(image, debugImage, cv::COLOR_GRAY2BGR);
-            else if (image.channels() == 4)
-                cv::cvtColor(image, debugImage, cv::COLOR_BGRA2BGR);
-            else
-                debugImage = image.clone();
-
-            // mask 白色区域显示为蓝色，mask 黑色区域保留原图。
-            debugImage.setTo(cv::Scalar(255, 0, 0), mask);
-
-            parameter.debugImages[ScratchAnalyseStageContouring] = debugImage.clone();
-        }
 
         // 统计image和mask的像素数量，并计算汇合度
         result.scratchArea.pixel = static_cast<double>(cv::countNonZero(mask));
@@ -84,11 +69,28 @@ inline static EScratchQuality analyseScratch(
         result.confluence = totalPixels > 0.0
             ? 1.0 - (result.scratchArea.pixel / totalPixels)
             : 0.0;
-    }
+
+        // 绘制debug图像
+        if (debugImages == NULL)
+            break;
+
+        auto& debugImage = *debugImages[ScratchAnalyseStageMasking];
+        if (image.channels() == 1)
+            cv::cvtColor(image, debugImage, cv::COLOR_GRAY2BGR);
+        else if (image.channels() == 4)
+            cv::cvtColor(image, debugImage, cv::COLOR_BGRA2BGR);
+        else
+            debugImage = image.clone();
+
+        // mask 白色区域显示为蓝色，mask 黑色区域保留原图。
+        debugImage.setTo(cv::Scalar(255, 0, 0), mask);
+
+        *debugImages[ScratchAnalyseStageContouring] = debugImage.clone();
+    } while (0);
 
     // process image contour
     {
-        errorCode = contouring->process(&mask, &result, &parameter);
+        errorCode = contouring->process(mask, result, parameter.contouring.data, debugImages ? debugImages[ScratchAnalyseStageContouring] : NULL);
 
         if (errorCode)
             return ScratchQualityAbnormal;
@@ -118,9 +120,10 @@ inline static void calculateScratchResultKinetic(
 EScratchQuality CScratchController::analyseScratch(
     const cv::Mat& image, 
     struct ScratchParameter& parameter, 
-    struct ScratchResult& result)
+    struct ScratchResult& result,
+    cv::Mat* debugImages[NumberOfScratchAnalyseStage])
 {
-    return ::analyseScratch(image, parameter, result);
+    return ::analyseScratch(image, parameter, result, debugImages);
 }
 
 int CScratchController::analyseScratchKinetic(
@@ -129,7 +132,8 @@ int CScratchController::analyseScratchKinetic(
     struct ScratchResultFrame* frames,
     size_t size,
     struct ScratchParameter& parameter,
-    struct ScratchResultKinetic& result)
+    struct ScratchResultKinetic& result,
+    cv::Mat* debugImages[NumberOfScratchAnalyseStage])
 {
     int level = 0;
     double healList[NumberOfFrames];
@@ -147,7 +151,14 @@ int CScratchController::analyseScratchKinetic(
     }
     
     for (int i = 0; i < size; ++i)
-        frames[i].quality = ::analyseScratch(images[i], parameter, frames[i]);
+    {
+        frames[i].quality = ::analyseScratch(images[i], parameter, frames[i], debugImages);
+        
+        if (!debugImages)
+            continue;
+        ++debugImages[ScratchAnalyseStageMasking];
+        ++debugImages[ScratchAnalyseStageContouring];
+    }
 
     for (int i = 1; i < size; ++i)
         ::calculateScratchResultKinetic(timesElapsed[i], frames[i], frames[i-1], frames[0]);
@@ -183,11 +194,12 @@ int CScratchController::analyseScratchKineticOnce(
     const uint64_t timestamps[NumberOfFrames],
     struct ScratchResultFrame* frames[NumberOfFrames],
     struct ScratchParameter& parameter,
-    struct ScratchResultKinetic& result)
+    struct ScratchResultKinetic& result,
+    cv::Mat* debugImages[NumberOfScratchAnalyseStage])
 {
     auto timeElapsed = (timestamps[FrameCurrent] - timestamps[FramePrevious]) / 3600.0;
 
-    frames[FrameCurrent]->quality = ::analyseScratch(image, parameter, *frames[FrameCurrent]);
+    frames[FrameCurrent]->quality = ::analyseScratch(image, parameter, *frames[FrameCurrent], debugImages);
 
     ::calculateScratchResultKinetic(timeElapsed, *frames[FrameCurrent], *frames[FramePrevious], *frames[FrameFirst]);
 

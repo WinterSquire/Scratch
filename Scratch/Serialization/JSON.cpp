@@ -1,7 +1,10 @@
 #include <QJsonArray>
+#include <opencv2/imgcodecs.hpp>
+#include <ostream>
+#include <vector>
 
-#include "JSON.hpp"
 #include "../Scratch.hpp"
+#include "JSON.hpp"
 
 int CJSONSerializer::process(
     const uint64_t* timestampList, 
@@ -21,10 +24,54 @@ int CJSONSerializer::process(
 
     jRoot["t50"] = data.t50;
     jRoot["t90"] = data.t90;
-    jRoot["frames"] = jFrames;
+    jRoot["framesExp"] = jFrames;
     jRoot["timestamps"] = jTimestamps;
 
-    os << QJsonDocument(jRoot).toJson().constData();
+    os << QJsonDocument(jRoot).toJson(QJsonDocument::Compact).constData();
+
+    return 0;
+}
+
+int CJSONSerializer::process(
+    const cv::Mat *images, 
+    const cv::Mat *debugImages[NumberOfScratchAnalyseStage], 
+    size_t size, 
+    std::ostream &os)
+{
+    QJsonObject jRoot;
+    QJsonArray imageRaw, imageMask, imageContour;
+
+    auto matToDataUri = [](const cv::Mat &image) -> QString {
+        if (image.empty())
+            return QString();
+
+        std::vector<uchar> encoded;
+        if (!cv::imencode(".jpg", image, encoded))
+            return QString();
+
+        const QByteArray base64 = QByteArray(
+            reinterpret_cast<const char *>(encoded.data()),
+            static_cast<qsizetype>(encoded.size())).toBase64();
+        return QStringLiteral("data:image/jpg;base64,") + QString::fromLatin1(base64);
+    };
+
+    if (images)
+        for (size_t i = 0; i < size; ++i)
+            imageRaw.append(matToDataUri(images[i]));
+
+    if (debugImages && debugImages[ScratchAnalyseStageMasking])
+        for (size_t i = 0; i < size; ++i)
+            imageMask.append(matToDataUri(debugImages[ScratchAnalyseStageMasking][i]));
+    
+    if (debugImages && debugImages[ScratchAnalyseStageContouring])
+        for (size_t i = 0; i < size; ++i)
+            imageContour.append(matToDataUri(debugImages[ScratchAnalyseStageContouring][i]));
+
+    jRoot["imageRaw"] = imageRaw;
+    jRoot["imageMask"] = imageMask;
+    jRoot["imageContour"] = imageContour;
+
+    os << QJsonDocument(jRoot).toJson(QJsonDocument::Compact).constData();
 
     return 0;
 }
