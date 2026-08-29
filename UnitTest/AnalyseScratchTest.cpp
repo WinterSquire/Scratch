@@ -25,9 +25,32 @@
 
 TEST_SUITE("AnalyseScratchTest")
 {
-    TEST_CASE("TestAnalyseScratch")
+    TEST_CASE("TestAnalyseScratchKineticOnce")
     {
+        struct ScratchLab
+        {
+            ScratchLab()
+            {
+                memset(this, 0, sizeof(*this));
+                exp.p = 1.0;
+                exp.frames[0] = exp.frames[1] = exp.frames[2] = &frame;
+                exp.image = images + 0;
+                exp.timestamps[0] = exp.timestamps[1] = exp.timestamps[2] = 1145141919810;
+                exp.debugImages[ScratchAnalyseStageMasking] = images + 1;
+                exp.debugImages[ScratchAnalyseStageContouring] = images + 2;
 
+                parameter.masking.method = -1;
+            }
+
+            ScratchParameterGlobal parameter;
+            ScratchParameterKineticOnce exp;
+            ScratchResult frame;
+            cv::Mat images[3];
+        } lab{};
+
+        lab.images[0] = cv::imread(IMAGE_PATH_PREFIX "/A1_11_12_20250413_083750_cellScratch.jpg");
+
+        CScratchController::analyseScratchKineticOnce(lab.exp, lab.parameter);
     }
 
     TEST_CASE("TestAnalyseScratchKinetic")

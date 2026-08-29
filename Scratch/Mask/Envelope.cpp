@@ -5,12 +5,12 @@
 
 #define MASKING_ENVELOPE_KERNEL_SIZE 41
 
-int CMaskingEnvelope::process(const cv::Mat *image, cv::Mat *mask, const void* data, cv::Mat* debugImage)
+int CMaskingEnvelope::process(const cv::Mat& image, cv::Mat& mask, const void* data, cv::Mat* debugImage)
 {
     struct MaksingEnvelopeParameter defaultParameter;
     const struct MaksingEnvelopeParameter* _parameter = (struct MaksingEnvelopeParameter *)data;
 
-    if (image == nullptr || mask == nullptr || image->empty() || image->channels() != 3)
+    if (image.empty() || image.channels() != 3)
         return 1;
 
     if (data == NULL)
@@ -20,7 +20,7 @@ int CMaskingEnvelope::process(const cv::Mat *image, cv::Mat *mask, const void* d
     }
 
     cv::Mat hsv;
-    cv::cvtColor(*image, hsv, cv::COLOR_BGR2HSV);
+    cv::cvtColor(image, hsv, cv::COLOR_BGR2HSV);
 
     cv::Mat hue, saturation, value;
     std::vector<cv::Mat> channels;
@@ -39,7 +39,7 @@ int CMaskingEnvelope::process(const cv::Mat *image, cv::Mat *mask, const void* d
     cv::Mat closed;
     cv::morphologyEx(selected, closed, cv::MORPH_CLOSE, kernel);
 
-    *mask = largestComponent(fillHoles(directionalFill(closed)));
+    mask = largestComponent(fillHoles(directionalFill(closed)));
 
     return 0;
 }

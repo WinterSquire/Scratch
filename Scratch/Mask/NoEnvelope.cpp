@@ -7,13 +7,13 @@
 #include <limits>
 #include <vector>
 
-int CMaskingNoEnvelope::process(const cv::Mat *image, cv::Mat *mask, const void* data, cv::Mat* debugImage)
+int CMaskingNoEnvelope::process(const cv::Mat& image, cv::Mat& mask, const void* data, cv::Mat* debugImage)
 {
-    if (image == nullptr || mask == nullptr || image->empty() || image->channels() != 3)
+    if (image.empty() || image.channels() != 3)
         return 1;
 
     cv::Mat hsv;
-    cv::cvtColor(*image, hsv, cv::COLOR_BGR2HSV);
+    cv::cvtColor(image, hsv, cv::COLOR_BGR2HSV);
 
     cv::Mat hue, saturation, value;
     std::vector<cv::Mat> channels;
@@ -26,7 +26,7 @@ int CMaskingNoEnvelope::process(const cv::Mat *image, cv::Mat *mask, const void*
                         (saturation >= 60) & (value >= 40);
     selected.convertTo(selected, CV_8UC1, 1.0 / 255.0);
 
-    *mask = largestComponent(fillHoles(directionalFill(selected)));
+    mask = largestComponent(fillHoles(directionalFill(selected)));
 
     return 0;
 }

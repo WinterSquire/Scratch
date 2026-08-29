@@ -58,7 +58,7 @@ inline static EScratchQuality analyseScratch(
     // process image mask
     do {
         ZoneScopedN("Masking");
-        errorCode = masking->process(&image, &mask, parameter.masking.data, debugImages ? debugImages[ScratchAnalyseStageMasking] : NULL);
+        errorCode = masking->process(image, mask, parameter.masking.data, debugImages ? debugImages[ScratchAnalyseStageMasking] : NULL);
     
         if (errorCode)
             return ScratchQualityAbnormal;
@@ -112,6 +112,7 @@ inline static void calculateScratchResult(
     struct ScratchResult& frameFirst)
 {
     frameCurrent.heal = (frameFirst.scratchArea.pixel - frameCurrent.scratchArea.pixel) / frameFirst.scratchArea.pixel;
+    if (timeElapsed <= 1e-6) return;
     frameCurrent.speed.area = (framePrevious.scratchArea.um - frameCurrent.scratchArea.um) / timeElapsed;
     frameCurrent.speed.width = (framePrevious.width.avg - frameCurrent.width.avg) / timeElapsed;
 }

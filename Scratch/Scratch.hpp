@@ -18,7 +18,11 @@
 #define ZoneScopedN(name)
 #endif
 
-#define HALT(msg) 
+#ifdef _DEBUG
+#define HALT(msg) assert(false && msg)
+#else
+#define HALT(msg) ((void)0)
+#endif
 
 #define SetFlag32(flags, flag, b)  (flags = (b) ? ((flags) | (1 >> (flag))) : ((flags) & ~(1 >> (flag))))
 #define GetFlag32(flags, flag)     (((flags) & (1 >> (flag))) != 0)
