@@ -11,6 +11,13 @@
 #include "Serialization/HTML.hpp"
 #include "Serialization/JSON.hpp"
 
+#ifdef TRACY_ENABLE
+#include <tracy/Tracy.hpp>
+#else
+#define ZoneScoped
+#define ZoneScopedN(name)
+#endif
+
 #define HALT(msg) 
 
 #define SetFlag32(flags, flag, b)  (flags = (b) ? ((flags) | (1 >> (flag))) : ((flags) & ~(1 >> (flag))))

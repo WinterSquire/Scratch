@@ -9,8 +9,6 @@
 #include "Contour/Gaussian.hpp"
 #include "Contour/Skeleton.hpp"
 
-#include <tracy/Tracy.hpp>
-
 #define DEBUG_IMAGE_BACKGROUND_COLOR cv::Scalar(0xd3, 0xd3, 0x05)
 
 union MaskingStorage
@@ -31,6 +29,8 @@ inline static EScratchQuality analyseScratch(
     struct ScratchResult& result,
     cv::Mat* debugImages[NumberOfScratchAnalyseStage])
 {
+    ZoneScoped;
+
     cv::Mat mask;
     int errorCode;
     EScratchQuality quality = ScratchQualityNormal;
@@ -57,6 +57,7 @@ inline static EScratchQuality analyseScratch(
 
     // process image mask
     do {
+        ZoneScopedN("Masking");
         errorCode = masking->process(&image, &mask, parameter.masking.data, debugImages ? debugImages[ScratchAnalyseStageMasking] : NULL);
     
         if (errorCode)
@@ -87,6 +88,7 @@ inline static EScratchQuality analyseScratch(
 
     // process image contour
     {
+        ZoneScopedN("Contouring");
         errorCode = contouring->process(mask, result, parameter.contouring.data, debugImages ? debugImages[ScratchAnalyseStageContouring] : NULL);
 
         if (errorCode)
@@ -103,7 +105,7 @@ inline static EScratchQuality analyseScratch(
     return quality;
 }
 
-inline static void calculateScratchResultKinetic(
+inline static void calculateScratchResult(
     double timeElapsed,
     struct ScratchResult& frameCurrent,
     struct ScratchResult& framePrevious,
@@ -116,7 +118,7 @@ inline static void calculateScratchResultKinetic(
 
 int CScratchController::analyseScratchKinetic(struct ScratchParameterKinetic& parameter, struct ScratchParameterGlobal& gParameter, size_t size)
 {
-    ZoneScoped("CScratchController::analyseScratchKinetic");
+    ZoneScoped;
 
     int level = 0;
     double healList[NumberOfFrames];
@@ -125,6 +127,8 @@ int CScratchController::analyseScratchKinetic(struct ScratchParameterKinetic& pa
 
     timestampList[FrameCurrent] = timestampList[FramePrevious] = timestampList[FrameFirst] = parameter.timestamps[0];
 
+{
+    ZoneScopedN("CalculateTimestamp");
     for (int i = 0; i < size; ++i)
     {
         timestampList[FramePrevious] = timestampList[FrameCurrent];
@@ -132,29 +136,29 @@ int CScratchController::analyseScratchKinetic(struct ScratchParameterKinetic& pa
         times[i] = (timestampList[FrameCurrent] - timestampList[FrameFirst]) / 3600.0;
         timesElapsed[i] = (timestampList[FrameCurrent] - timestampList[FramePrevious]) / 3600.0;
     }
+}
    
     
     for (int i = 0; i < size; ++i)
     {
-        {
-            ZoneScopedN("::analyseScratc");
-            parameter.frames[i].quality = ::analyseScratch(parameter.images[i], gParameter, parameter.frames[i], parameter.debugImages);
-        
-            if (parameter.debugImages[ScratchAnalyseStageMasking]) ++parameter.debugImages[ScratchAnalyseStageMasking];
-            if (parameter.debugImages[ScratchAnalyseStageContouring]) ++parameter.debugImages[ScratchAnalyseStageContouring];
-        }
+        parameter.frames[i].quality = analyseScratch(parameter.images[i], gParameter, parameter.frames[i], parameter.debugImages);
+    
+        if (parameter.debugImages[ScratchAnalyseStageMasking]) ++parameter.debugImages[ScratchAnalyseStageMasking];
+        if (parameter.debugImages[ScratchAnalyseStageContouring]) ++parameter.debugImages[ScratchAnalyseStageContouring];
     }
 
 {
-    ZoneScopedN("::calculateScratchResultKinetic");
+    ZoneScopedN("CalculateScratchResult");
     for (int i = 1; i < size; ++i)
     {
-        ::calculateScratchResultKinetic(timesElapsed[i], parameter.frames[i], parameter.frames[i-1], parameter.frames[0]);
+        calculateScratchResult(timesElapsed[i], parameter.frames[i], parameter.frames[i-1], parameter.frames[0]);
     }
 }
 
     healList[FrameCurrent] = healList[FramePrevious] = healList[FrameFirst] = parameter.frames[0].heal;
 
+{
+    ZoneScopedN("CalculateT50T90");
     for (int i = 1; i < size; ++i)
     {
         if (level > 1)
@@ -175,6 +179,7 @@ int CScratchController::analyseScratchKinetic(struct ScratchParameterKinetic& pa
             parameter.t90 = times[i-1] + (timesElapsed[i] * (0.9 - healList[FramePrevious]) / (healList[FrameCurrent] - healList[FramePrevious]));
         }
     }
+}
 
     return 0;
 }
@@ -185,7 +190,7 @@ int CScratchController::analyseScratchKineticOnce(struct ScratchParameterKinetic
 
     parameter.frames[FrameCurrent]->quality = ::analyseScratch(*parameter.image, gParameter, *parameter.frames[FrameCurrent], parameter.debugImages);
 
-    ::calculateScratchResultKinetic(timeElapsed, *parameter.frames[FrameCurrent], *parameter.frames[FramePrevious], *parameter.frames[FrameFirst]);
+    ::calculateScratchResult(timeElapsed, *parameter.frames[FrameCurrent], *parameter.frames[FramePrevious], *parameter.frames[FrameFirst]);
 
     auto heal = parameter.frames[FrameCurrent]->heal;
 

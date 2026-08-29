@@ -94,28 +94,30 @@ TEST_SUITE("AnalyseScratchTest")
         
         REQUIRE(lab.size >= 2);
 
-        for (int i = 0; i < lab.size; ++i)
-        {
-            const auto& expImageInfo = expImageInfoList[i];
+        do {
+            ZoneScopedN("ReadImages");
 
-            auto date = re.match(expImageInfo.baseName()).captured(1);
+            for (int i = 0; i < lab.size; ++i)
+            {
+                const auto& expImageInfo = expImageInfoList[i];
 
-            lab.exp.images[i] = cv::imread(expImageInfo.absoluteFilePath().toStdString());
-            lab.exp.timestamps[i] = QDateTime::fromString(date, "yyyyMMdd_HHmmss").toSecsSinceEpoch();
-        }        
+                auto date = re.match(expImageInfo.baseName()).captured(1);
 
-        auto timeBegin = std::chrono::high_resolution_clock::now();
-        errorCode = CScratchController::analyseScratchKinetic(lab.exp, lab.parameter, lab.size);
+                lab.exp.images[i] = cv::imread(expImageInfo.absoluteFilePath().toStdString());
+                lab.exp.timestamps[i] = QDateTime::fromString(date, "yyyyMMdd_HHmmss").toSecsSinceEpoch();
+            }        
+        } while (0);
 
-        REQUIRE(errorCode == 0);
-        auto timeEnd = std::chrono::high_resolution_clock::now();
-        auto timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeBegin).count();
+        do {
+            ZoneScopedN("ProcessImages");
+            errorCode = CScratchController::analyseScratchKinetic(lab.exp, lab.parameter, lab.size);
+        } while (0);
 
         lab.generate();
-
-        MESSAGE("Spend Time: " << timeElapsed << " ms");
         
         {   
+            ZoneScopedN("Serialization");
+
             std::ofstream html(IMAGE_PATH_PREFIX "/index.html");
             std::ofstream dataJs(IMAGE_PATH_PREFIX "/data.js");
             std::ofstream imageJs(IMAGE_PATH_PREFIX "/images.js");

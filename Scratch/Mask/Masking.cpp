@@ -7,6 +7,13 @@
 #include <limits>
 #include <vector>
 
+#ifdef TRACY_ENABLE
+#include <tracy/Tracy.hpp>
+#else
+#define ZoneScoped
+#define ZoneScopedN(name)
+#endif
+
 static double median(std::vector<double> values)
 {
     if (values.empty())
@@ -40,6 +47,7 @@ static void medianFilter(std::vector<double> &values, int size)
 
 cv::Mat directionalFill(const cv::Mat &source)
 {
+    ZoneScoped;
     cv::Mat binary;
     source.convertTo(binary, CV_8UC1);
     if (cv::countNonZero(binary) < 16)
@@ -202,6 +210,7 @@ cv::Mat directionalFill(const cv::Mat &source)
 
 cv::Mat fillHoles(const cv::Mat &source)
 {
+    ZoneScoped;
     cv::Mat flood;
     source.convertTo(flood, CV_8UC1, -255.0, 255.0);
     for (int x = 0; x < flood.cols; ++x) {
@@ -217,6 +226,7 @@ cv::Mat fillHoles(const cv::Mat &source)
 
 cv::Mat largestComponent(const cv::Mat &source)
 {
+    ZoneScoped;
     cv::Mat binary;
     source.convertTo(binary, CV_8UC1);
     cv::Mat labels, statistics, centroids;
