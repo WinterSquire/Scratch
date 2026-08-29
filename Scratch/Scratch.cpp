@@ -25,7 +25,7 @@ union ContouringStorage
 
 inline static EScratchQuality analyseScratch(
     const cv::Mat& image, 
-    struct ScratchParameter& parameter, 
+    struct ScratchParameterGlobal& parameter, 
     struct ScratchResult& result,
     cv::Mat* debugImages[NumberOfScratchAnalyseStage])
 {
@@ -76,18 +76,11 @@ inline static EScratchQuality analyseScratch(
         if (debugImages == NULL)
             break;
 
-        auto& debugImage = *debugImages[ScratchAnalyseStageMasking];
-        if (image.channels() == 1)
-            cv::cvtColor(image, debugImage, cv::COLOR_GRAY2BGR);
-        else if (image.channels() == 4)
-            cv::cvtColor(image, debugImage, cv::COLOR_BGRA2BGR);
-        else
-            debugImage = image.clone();
-
         // mask 白色区域显示为蓝色，mask 黑色区域保留原图。
-        debugImage.setTo(DEBUG_IMAGE_BACKGROUND_COLOR, mask);
+        *debugImages[ScratchAnalyseStageMasking] = image.clone();
+        debugImages[ScratchAnalyseStageMasking]->setTo(DEBUG_IMAGE_BACKGROUND_COLOR, mask);
 
-        *debugImages[ScratchAnalyseStageContouring] = debugImage.clone();
+        *debugImages[ScratchAnalyseStageContouring] = debugImages[ScratchAnalyseStageMasking]->clone();
     } while (0);
 
     // process image contour
@@ -110,62 +103,44 @@ inline static EScratchQuality analyseScratch(
 
 inline static void calculateScratchResultKinetic(
     double timeElapsed,
-    struct ScratchResultFrame& frameCurrent,
-    struct ScratchResultFrame& framePrevious,
-    struct ScratchResultFrame& frameFirst)
+    struct ScratchResult& frameCurrent,
+    struct ScratchResult& framePrevious,
+    struct ScratchResult& frameFirst)
 {
     frameCurrent.heal = (frameFirst.scratchArea.pixel - frameCurrent.scratchArea.pixel) / frameFirst.scratchArea.pixel;
     frameCurrent.speed.area = (framePrevious.scratchArea.um - frameCurrent.scratchArea.um) / timeElapsed;
     frameCurrent.speed.width = (framePrevious.width.avg - frameCurrent.width.avg) / timeElapsed;
 }
 
-EScratchQuality CScratchController::analyseScratch(
-    const cv::Mat& image, 
-    struct ScratchParameter& parameter, 
-    struct ScratchResult& result,
-    cv::Mat* debugImages[NumberOfScratchAnalyseStage])
-{
-    return ::analyseScratch(image, parameter, result, debugImages);
-}
-
-int CScratchController::analyseScratchKinetic(
-    const cv::Mat* images,
-    const uint64_t* timestamps,
-    struct ScratchResultFrame* frames,
-    size_t size,
-    struct ScratchParameter& parameter,
-    struct ScratchResultKinetic& result,
-    cv::Mat* debugImages[NumberOfScratchAnalyseStage])
+int CScratchController::analyseScratchKinetic(struct ScratchParameterKinetic& parameter, struct ScratchParameterGlobal& gParameter, size_t size)
 {
     int level = 0;
     double healList[NumberOfFrames];
     uint64_t timestampList[NumberOfFrames];
     std::vector<double> times(size), timesElapsed(size);
 
-    timestampList[FrameCurrent] = timestampList[FramePrevious] = timestampList[FrameFirst] = timestamps[0];
+    timestampList[FrameCurrent] = timestampList[FramePrevious] = timestampList[FrameFirst] = parameter.timestamps[0];
 
     for (int i = 0; i < size; ++i)
     {
         timestampList[FramePrevious] = timestampList[FrameCurrent];
-        timestampList[FrameCurrent] = timestamps[i];
+        timestampList[FrameCurrent] = parameter.timestamps[i];
         times[i] = (timestampList[FrameCurrent] - timestampList[FrameFirst]) / 3600.0;
         timesElapsed[i] = (timestampList[FrameCurrent] - timestampList[FramePrevious]) / 3600.0;
     }
     
     for (int i = 0; i < size; ++i)
     {
-        frames[i].quality = ::analyseScratch(images[i], parameter, frames[i], debugImages);
+        parameter.frames[i].quality = ::analyseScratch(parameter.images[i], gParameter, parameter.frames[i], parameter.debugImages);
         
-        if (!debugImages)
-            continue;
-        ++debugImages[ScratchAnalyseStageMasking];
-        ++debugImages[ScratchAnalyseStageContouring];
+        if (parameter.debugImages[ScratchAnalyseStageMasking]) ++parameter.debugImages[ScratchAnalyseStageMasking];
+        if (parameter.debugImages[ScratchAnalyseStageContouring]) ++parameter.debugImages[ScratchAnalyseStageContouring];
     }
 
     for (int i = 1; i < size; ++i)
-        ::calculateScratchResultKinetic(timesElapsed[i], frames[i], frames[i-1], frames[0]);
+        ::calculateScratchResultKinetic(timesElapsed[i], parameter.frames[i], parameter.frames[i-1], parameter.frames[0]);
 
-    healList[FrameCurrent] = healList[FramePrevious] = healList[FrameFirst] = frames[0].heal;
+    healList[FrameCurrent] = healList[FramePrevious] = healList[FrameFirst] = parameter.frames[0].heal;
 
     for (int i = 1; i < size; ++i)
     {
@@ -173,52 +148,46 @@ int CScratchController::analyseScratchKinetic(
             break;
         
         healList[FramePrevious] = healList[FrameCurrent];
-        healList[FrameCurrent] = frames[i].heal;
+        healList[FrameCurrent] = parameter.frames[i].heal;
 
         if (level == 0 && healList[FrameCurrent] >= 0.5)
         {
             ++level;
-            result.t50 = times[i-1] + (timesElapsed[i] * (0.5 - healList[FramePrevious]) / (healList[FrameCurrent] - healList[FramePrevious]));
+            parameter.t50 = times[i-1] + (timesElapsed[i] * (0.5 - healList[FramePrevious]) / (healList[FrameCurrent] - healList[FramePrevious]));
         }
 
         if (level == 1 && healList[FrameCurrent] >= 0.9)
         {
             ++level;
-            result.t90 = times[i-1] + (timesElapsed[i] * (0.9 - healList[FramePrevious]) / (healList[FrameCurrent] - healList[FramePrevious]));
+            parameter.t90 = times[i-1] + (timesElapsed[i] * (0.9 - healList[FramePrevious]) / (healList[FrameCurrent] - healList[FramePrevious]));
         }
     }
 
     return 0;
 }
 
-int CScratchController::analyseScratchKineticOnce(
-    const cv::Mat& image,
-    const uint64_t timestamps[NumberOfFrames],
-    struct ScratchResultFrame* frames[NumberOfFrames],
-    struct ScratchParameter& parameter,
-    struct ScratchResultKinetic& result,
-    cv::Mat* debugImages[NumberOfScratchAnalyseStage])
+int CScratchController::analyseScratchKineticOnce(struct ScratchParameterKineticOnce& parameter, struct ScratchParameterGlobal& gParameter)
 {
-    auto timeElapsed = (timestamps[FrameCurrent] - timestamps[FramePrevious]) / 3600.0;
+    auto timeElapsed = (parameter.timestamps[FrameCurrent] - parameter.timestamps[FramePrevious]) / 3600.0;
 
-    frames[FrameCurrent]->quality = ::analyseScratch(image, parameter, *frames[FrameCurrent], debugImages);
+    parameter.frames[FrameCurrent]->quality = ::analyseScratch(*parameter.image, gParameter, *parameter.frames[FrameCurrent], parameter.debugImages);
 
-    ::calculateScratchResultKinetic(timeElapsed, *frames[FrameCurrent], *frames[FramePrevious], *frames[FrameFirst]);
+    ::calculateScratchResultKinetic(timeElapsed, *parameter.frames[FrameCurrent], *parameter.frames[FramePrevious], *parameter.frames[FrameFirst]);
 
-    auto heal = frames[FrameCurrent]->heal;
+    auto heal = parameter.frames[FrameCurrent]->heal;
 
-    if (result.t50 == 0 && heal >= 0.5)
+    if (parameter.t50 == 0 && heal >= 0.5)
     {
-        auto healBase = frames[FramePrevious]->heal;
-        auto timeBase = (timestamps[FramePrevious] - timestamps[FrameFirst]) / 3600.0;
-        result.t50 = timeBase + (timeElapsed * (0.5 - healBase) / (heal - healBase));
+        auto healBase = parameter.frames[FramePrevious]->heal;
+        auto timeBase = (parameter.timestamps[FramePrevious] - parameter.timestamps[FrameFirst]) / 3600.0;
+        parameter.t50 = timeBase + (timeElapsed * (0.5 - healBase) / (heal - healBase));
     }
 
-    if (result.t90 == 0 && heal >= 0.9)
+    if (parameter.t90 == 0 && heal >= 0.9)
     {
-        auto healBase = frames[FramePrevious]->heal;
-        auto timeBase = (timestamps[FramePrevious] - timestamps[FrameFirst]) / 3600.0;
-        result.t50 = timeBase + (timeElapsed * (0.9 - healBase) / (heal - healBase));
+        auto healBase = parameter.frames[FramePrevious]->heal;
+        auto timeBase = (parameter.timestamps[FramePrevious] - parameter.timestamps[FrameFirst]) / 3600.0;
+        parameter.t50 = timeBase + (timeElapsed * (0.9 - healBase) / (heal - healBase));
     }
 
     return 0;

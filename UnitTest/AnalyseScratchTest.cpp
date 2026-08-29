@@ -1,8 +1,13 @@
 #include <fstream>
 #include <cmath>
+#include <algorithm>
 #include <QDir>
 #include <QRegularExpression>
 #include <QDateTime>
+
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 #include <Scratch.hpp>
 
@@ -22,114 +27,118 @@ TEST_SUITE("AnalyseScratchTest")
 {
     TEST_CASE("TestAnalyseScratch")
     {
-        ScratchParameter parameter{};
-        ScratchResult result{};
 
-        auto imageName = "A1_11_12_20250413_083750_cellScratch.jpg";
-        auto imagePath = std::string() + IMAGE_PATH_PREFIX + '/' + imageName;
-        auto imageRGB = cv::imread(imagePath);
-        auto debugDirectory = QStringLiteral("Data/Output/S1");
-
-        parameter.dx = parameter.dy = 1.0;        
-        parameter.masking.method = MaskingNoEnvelope;
-        parameter.contouring.method = ContouringGaussian;
-
-        auto timeBegin = std::chrono::high_resolution_clock::now();
-        auto imageQuality = CScratchController::analyseScratch(imageRGB, parameter, result);
-        auto timeEnd = std::chrono::high_resolution_clock::now();
-        auto timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeBegin).count();
-
-        MESSAGE("Spend Time: " << timeElapsed << " ms");
-        MESSAGE(("NoEnvelope + Guassian: \n" + toJsonString(result)));
-
-        // parameter.contouring.method = ContouringSkeleton;
-        // timeBegin = std::chrono::high_resolution_clock::now();
-        // imageQuality = CScratchController::analyseScratch(imageRGB, parameter, result);
-        // timeEnd = std::chrono::high_resolution_clock::now();
-        // timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeBegin).count();
-
-        // MESSAGE("Spend Time: " << timeElapsed << " ms");
-        // MESSAGE(("NoEnvelope + Skeleton: \n" + toJsonString(result)));
     }
 
     TEST_CASE("TestAnalyseScratchKinetic")
     {
+        struct ScratchLab
+        {
+            ScratchLab(size_t size) : size(size), expImageList(size), expImageMaskList(size), expImageContourList(size), conImageList(size), timestamps(size), expFrames(size), conFrames(size) {
+                memset(&this->exp, 0, sizeof(this->exp));
+                memset(&this->parameter, 0, sizeof(this->parameter));
+                
+                parameter.masking.method = MaskingNoEnvelope;
+                parameter.contouring.method = ContouringGaussian;
+                parameter.dx = parameter.dy = 1.0;
+
+                exp.p = 0.8;
+                exp.images = expImageList.data();
+                exp.timestamps = timestamps.data();
+                exp.frames = expFrames.data();
+                exp.debugImages[ScratchAnalyseStageMasking] = expImageMaskList.data();
+                exp.debugImages[ScratchAnalyseStageContouring] = expImageContourList.data();
+
+                con.p = 0.7;
+                con.images = conImageList.data();
+                con.frames = conFrames.data();
+                con.timestamps = timestamps.data();
+            }
+
+            void generate()
+            {
+                for (int i = 0; i < size; ++i)
+                {
+                    auto& expFrame = exp.frames[i];
+                    auto& conFrame = con.frames[i];
+
+                    conFrame = expFrame;
+                    conFrame.heal = std::max(0.0, expFrame.heal * 0.85);
+                    conFrame.confluence = std::max(0.0, expFrame.confluence * 1.05);
+                    conFrame.scratchArea.pixel = expFrame.scratchArea.pixel * 1.10;
+                    conFrame.scratchArea.um = expFrame.scratchArea.um * 1.10;
+                    conFrame.width.avg = expFrame.width.avg * 1.08;
+                    conFrame.width.std = expFrame.width.std * 1.08;
+                    conFrame.width.med = expFrame.width.med * 1.08;
+                    conFrame.roughness.left = expFrame.roughness.left * 1.12;
+                    conFrame.roughness.right = expFrame.roughness.right * 1.12;
+                    conFrame.speed.width = expFrame.speed.width * 0.90;
+                    conFrame.speed.area = expFrame.speed.area * 0.90;
+                }
+            }
+
+            size_t size;
+            ScratchParameterGlobal parameter;
+            ScratchParameterKinetic exp, con;
+            
+            std::vector<cv::Mat> expImageList, expImageMaskList, expImageContourList, conImageList;
+            std::vector<uint64_t> timestamps;
+            std::vector<ScratchResult> expFrames, conFrames;
+        };        
+
         int errorCode;
-        ScratchParameter parameter{};
-        ScratchResultKinetic result{};
         QRegularExpression re(R"((\d{8}_\d{6}))");
         QDir expImageDir(IMAGE_PATH_PREFIX, "*.jpg", QDir::Name, QDir::Files);
         auto expImageInfoList = expImageDir.entryInfoList();
-        auto size = expImageInfoList.size();
-        auto expImageList = std::vector<cv::Mat>(size);
-        auto expImageMaskList = std::vector<cv::Mat>(size);
-        auto expImageContourList = std::vector<cv::Mat>(size);
-        auto timestampList = std::vector<uint64_t>(size);
-        auto frames = std::vector<ScratchResultFrame>(size);
+        ScratchLab lab(expImageInfoList.size());
+        
+        REQUIRE(lab.size >= 2);
 
-        cv::Mat* expDebugImages[NumberOfScratchAnalyseStage];
-
-        expDebugImages[ScratchAnalyseStageMasking] = expImageMaskList.data();
-        expDebugImages[ScratchAnalyseStageContouring] = expImageContourList.data();
-
-        for (int i = 0; i < size; ++i)
+        for (int i = 0; i < lab.size; ++i)
         {
             const auto& expImageInfo = expImageInfoList[i];
 
             auto date = re.match(expImageInfo.baseName()).captured(1);
 
-            expImageList[i] = cv::imread(expImageInfo.absoluteFilePath().toStdString());
-            timestampList[i] = QDateTime::fromString(date, "yyyyMMdd_HHmmss").toSecsSinceEpoch();
-        }
-
-        parameter.dx = parameter.dy = 1.0;
-
-        REQUIRE(expImageList.size() == timestampList.size());
-        REQUIRE(expImageList.size() >= 2);
+            lab.exp.images[i] = cv::imread(expImageInfo.absoluteFilePath().toStdString());
+            lab.exp.timestamps[i] = QDateTime::fromString(date, "yyyyMMdd_HHmmss").toSecsSinceEpoch();
+        }        
 
         auto timeBegin = std::chrono::high_resolution_clock::now();
-        errorCode = CScratchController::analyseScratchKinetic(
-            expImageList.data(),
-            timestampList.data(),
-            frames.data(),
-            size,
-            parameter,
-            result,
-            expDebugImages);
+        errorCode = CScratchController::analyseScratchKinetic(lab.exp, lab.parameter, lab.size);
 
         REQUIRE(errorCode == 0);
         auto timeEnd = std::chrono::high_resolution_clock::now();
         auto timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeBegin).count();
 
+        lab.generate();
+
         MESSAGE("Spend Time: " << timeElapsed << " ms");
         
-        {            
-            std::ofstream jsonFile(IMAGE_PATH_PREFIX "/data.js");
+        {   
+            std::ofstream html(IMAGE_PATH_PREFIX "/index.html");
+            std::ofstream dataJs(IMAGE_PATH_PREFIX "/data.js");
+            std::ofstream imageJs(IMAGE_PATH_PREFIX "/images.js");
 
-            jsonFile << "const DATA = ";
-            
-            CJSONSerializer::process(
-                timestampList.data(),
-                frames.data(),
-                size,
-                result,
-                jsonFile);
+            lab.exp.debugImages[ScratchAnalyseStageMasking] = lab.expImageMaskList.data();
+            lab.exp.debugImages[ScratchAnalyseStageContouring] = lab.expImageContourList.data();
+
+            Scratch::createHTMLTemplate(html);
+            CDataJsSerializer().serialize(lab.size, &lab.exp, &lab.con, lab.parameter, dataJs);
+            CImagesJsSerializer().serialize(lab.size, &lab.exp, NULL, lab.parameter, imageJs);
         }
 
-        {
-            std::ofstream jsonFile(IMAGE_PATH_PREFIX "/images.js");
-            const cv::Mat* mats[2];
-            
-            mats[ScratchAnalyseStageMasking] = expImageMaskList.data();
-            mats[ScratchAnalyseStageContouring] = expImageContourList.data();
+        std::filesystem::path path = std::filesystem::absolute("Data/Input/S1/index.html");
 
-            jsonFile << "const IMAGES = ";
-
-            CJSONSerializer::process(
-                expImageList.data(),
-                mats,
-                size,
-                jsonFile);
-        }
+#ifdef _WIN32
+        ShellExecuteW(
+            nullptr,
+            L"open",
+            path.c_str(),
+            nullptr,
+            nullptr,
+            SW_SHOWNORMAL
+        );
+#endif
     }
 }

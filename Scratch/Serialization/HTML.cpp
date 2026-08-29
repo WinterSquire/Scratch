@@ -1,14 +1,10 @@
 #include <iostream>
 
 #include "HTML.hpp"
-#include "../Scratch.hpp"
+#include "RawHTML.inl"
 
-int CHTMLSerializer::process(
-    const uint64_t* timestampList, 
-    const struct ScratchResultFrame* frames,
-    size_t size, 
-    const struct ScratchResultKinetic& data, 
-    std::ostream& os)
+int Scratch::createHTMLTemplate(std::ostream &os)
 {
+    os.write(reinterpret_cast<const char*>(single_html), single_html_len);
     return 0;
 }

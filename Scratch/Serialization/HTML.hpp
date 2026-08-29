@@ -1,12 +1,9 @@
 #pragma once
 
-class CHTMLSerializer
+#include "Serialization.hpp"
+
+namespace Scratch
 {
-public:
-    static int process(
-        const uint64_t* timestampList, 
-        const struct ScratchResultFrame* frames,
-        size_t size, 
-        const struct ScratchResultKinetic& data, 
-        std::ostream& os);
+    int createHTMLTemplate(std::ostream& os);
 };
+

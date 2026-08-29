@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Serialization.hpp"
+#include <ostream>
 
-class CCSVSerializer : public ISerializer
+class ISerializer
 {
 public:
     virtual int serialize(
@@ -10,5 +10,5 @@ public:
         struct ScratchParameterKinetic* exp,
         struct ScratchParameterKinetic* con,
         struct ScratchParameterGlobal& parameter, 
-        std::ostream& os) override;
+        std::ostream& os) = 0;
 };
