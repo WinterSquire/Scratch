@@ -9,6 +9,8 @@
 #include "Contour/Gaussian.hpp"
 #include "Contour/Skeleton.hpp"
 
+#include <tracy/Tracy.hpp>
+
 #define DEBUG_IMAGE_BACKGROUND_COLOR cv::Scalar(0xd3, 0xd3, 0x05)
 
 union MaskingStorage
@@ -114,6 +116,8 @@ inline static void calculateScratchResultKinetic(
 
 int CScratchController::analyseScratchKinetic(struct ScratchParameterKinetic& parameter, struct ScratchParameterGlobal& gParameter, size_t size)
 {
+    ZoneScoped("CScratchController::analyseScratchKinetic");
+
     int level = 0;
     double healList[NumberOfFrames];
     uint64_t timestampList[NumberOfFrames];
@@ -128,17 +132,26 @@ int CScratchController::analyseScratchKinetic(struct ScratchParameterKinetic& pa
         times[i] = (timestampList[FrameCurrent] - timestampList[FrameFirst]) / 3600.0;
         timesElapsed[i] = (timestampList[FrameCurrent] - timestampList[FramePrevious]) / 3600.0;
     }
+   
     
     for (int i = 0; i < size; ++i)
     {
-        parameter.frames[i].quality = ::analyseScratch(parameter.images[i], gParameter, parameter.frames[i], parameter.debugImages);
+        {
+            ZoneScopedN("::analyseScratc");
+            parameter.frames[i].quality = ::analyseScratch(parameter.images[i], gParameter, parameter.frames[i], parameter.debugImages);
         
-        if (parameter.debugImages[ScratchAnalyseStageMasking]) ++parameter.debugImages[ScratchAnalyseStageMasking];
-        if (parameter.debugImages[ScratchAnalyseStageContouring]) ++parameter.debugImages[ScratchAnalyseStageContouring];
+            if (parameter.debugImages[ScratchAnalyseStageMasking]) ++parameter.debugImages[ScratchAnalyseStageMasking];
+            if (parameter.debugImages[ScratchAnalyseStageContouring]) ++parameter.debugImages[ScratchAnalyseStageContouring];
+        }
     }
 
+{
+    ZoneScopedN("::calculateScratchResultKinetic");
     for (int i = 1; i < size; ++i)
+    {
         ::calculateScratchResultKinetic(timesElapsed[i], parameter.frames[i], parameter.frames[i-1], parameter.frames[0]);
+    }
+}
 
     healList[FrameCurrent] = healList[FramePrevious] = healList[FrameFirst] = parameter.frames[0].heal;
 

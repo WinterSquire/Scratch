@@ -25,6 +25,15 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE":"Release"
             }
+        },
+        {
+            "name": "MSVCReleaseProfile",
+            "inherits": "MSVC",
+            "binaryDir": "Build/MSVCReleaseProfile",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE":"Release",
+                "PROFILE":"ON"
+            }
         }
     ]
 }

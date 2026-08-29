@@ -24,3 +24,8 @@ add_library(Scratch STATIC
 
 target_include_directories(Scratch PUBLIC Scratch)
 target_link_libraries(Scratch PUBLIC ${OpenCV_LIBS} Qt6::Core)
+
+if(PROFILE)
+    target_compile_definitions(Scratch PUBLIC TRACY_ENABLE)
+    target_link_libraries(Scratch PUBLIC Tracy::TracyClient)
+endif()
