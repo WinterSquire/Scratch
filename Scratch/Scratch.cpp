@@ -9,6 +9,8 @@
 #include "Contour/Gaussian.hpp"
 #include "Contour/Skeleton.hpp"
 
+#define DEBUG_IMAGE_BACKGROUND_COLOR cv::Scalar(0xd3, 0xd3, 0x05)
+
 union MaskingStorage
 {
     char envelope[sizeof(class CMaskingEnvelope)];
@@ -83,7 +85,7 @@ inline static EScratchQuality analyseScratch(
             debugImage = image.clone();
 
         // mask 白色区域显示为蓝色，mask 黑色区域保留原图。
-        debugImage.setTo(cv::Scalar(255, 0, 0), mask);
+        debugImage.setTo(DEBUG_IMAGE_BACKGROUND_COLOR, mask);
 
         *debugImages[ScratchAnalyseStageContouring] = debugImage.clone();
     } while (0);

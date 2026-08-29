@@ -20,7 +20,7 @@ int CMaskingEnvelope::process(const cv::Mat *image, cv::Mat *mask, const void* d
     }
 
     cv::Mat hsv;
-    cv::cvtColor(*image, hsv, cv::COLOR_RGB2HSV);
+    cv::cvtColor(*image, hsv, cv::COLOR_BGR2HSV);
 
     cv::Mat hue, saturation, value;
     std::vector<cv::Mat> channels;

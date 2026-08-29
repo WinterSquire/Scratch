@@ -27,7 +27,7 @@ TEST_SUITE("AnalyseScratchTest")
 
         auto imageName = "A1_11_12_20250413_083750_cellScratch.jpg";
         auto imagePath = std::string() + IMAGE_PATH_PREFIX + '/' + imageName;
-        auto imageRGB = cv::imread(imagePath, cv::IMREAD_COLOR_RGB);
+        auto imageRGB = cv::imread(imagePath);
         auto debugDirectory = QStringLiteral("Data/Output/S1");
 
         parameter.dx = parameter.dy = 1.0;        
@@ -78,7 +78,7 @@ TEST_SUITE("AnalyseScratchTest")
 
             auto date = re.match(expImageInfo.baseName()).captured(1);
 
-            expImageList[i] = cv::imread(expImageInfo.absoluteFilePath().toStdString(), cv::IMREAD_COLOR_RGB);
+            expImageList[i] = cv::imread(expImageInfo.absoluteFilePath().toStdString());
             timestampList[i] = QDateTime::fromString(date, "yyyyMMdd_HHmmss").toSecsSinceEpoch();
         }
 

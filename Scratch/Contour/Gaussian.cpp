@@ -8,7 +8,9 @@
 #include "Gaussian.hpp"
 #include "../Scratch.hpp"
 
-#define GAUSSIAN_DEBUG_IMAGE_LINES 100
+#define GAUSSIAN_DEBUG_IMAGE_LINES 50
+#define GAUSSIAN_DEBUG_IMAGE_LINE_COLOR cv::Scalar(0, 0, 0xFF)
+#define GAUSSIAN_DEBUG_IMAGE_LINE_THICKNESS 3
 
 static void fillNan1D(const cv::Mat &input, cv::Mat &output)
 {
@@ -248,9 +250,15 @@ int CContouringGaussian::process(const cv::Mat& mask, struct ScratchResult& resu
             const int leftPoint = std::clamp(cvRound(leftX), 0, mask.cols - 1);
             const int rightPoint = std::clamp(cvRound(rightX), 0, mask.cols - 1);
             const int centerPoint = (leftPoint + rightPoint) / 2;
-            cv::line(_debugImage, cv::Point(leftPoint, y),
-                     cv::Point(rightPoint, y), cv::Scalar(0, 255, 255), 1,
-                     cv::LINE_8);
+            
+            cv::line(
+                _debugImage, 
+                cv::Point(leftPoint, y),
+                cv::Point(rightPoint, y), 
+                GAUSSIAN_DEBUG_IMAGE_LINE_COLOR, 
+                GAUSSIAN_DEBUG_IMAGE_LINE_THICKNESS,
+                cv::LINE_8);
+
             _debugImage.at<cv::Vec3b>(y, leftPoint) = cv::Vec3b(255, 0, 0);
             _debugImage.at<cv::Vec3b>(y, rightPoint) = cv::Vec3b(0, 0, 255);
             _debugImage.at<cv::Vec3b>(y, centerPoint) = cv::Vec3b(0, 255, 0);
