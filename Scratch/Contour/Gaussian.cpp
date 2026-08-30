@@ -168,9 +168,6 @@ static double calculateTortuosity(const cv::Mat& edge)
     return arcLength / projectionLength;
 }
 
-#define ASSERT(exp)
-#define HALT(msg)
-
 static void buildResult(const cv::Mat &left,
                         const cv::Mat &right,
                         ScratchResult &result)

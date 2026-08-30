@@ -11,7 +11,7 @@
             }
         },
         {
-            "name": "MSVCDebug",
+            "name": "MSVC Debug",
             "inherits": "MSVC",
             "binaryDir": "Build/MSVCDebug",
             "cacheVariables": {
@@ -19,19 +19,18 @@
             }
         },
         {
-            "name": "MSVCRelease",
+            "name": "MSVC RelWithDebInfo",
             "inherits": "MSVC",
-            "binaryDir": "Build/MSVCRelease",
+            "binaryDir": "Build/MSVCRelWithDebInfo",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE":"Release"
+                "CMAKE_BUILD_TYPE":"RelWithDebInfo"
             }
         },
         {
-            "name": "MSVCReleaseProfile",
-            "inherits": "MSVC",
+            "name": "MSVC RelWithDebInfo Profile",
+            "inherits": "MSVC RelWithDebInfo",
             "binaryDir": "Build/MSVCReleaseProfile",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE":"Release",
                 "PROFILE":"ON"
             }
         }

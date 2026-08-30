@@ -20,8 +20,10 @@
 
 #ifdef _DEBUG
 #define HALT(msg) assert(false && msg)
+#define ASSERT(exp) assert(exp)
 #else
 #define HALT(msg) ((void)0)
+#define ASSERT(exp) ((void)0)
 #endif
 
 #define SetFlag32(flags, flag, b)  (flags = (b) ? ((flags) | (1 >> (flag))) : ((flags) & ~(1 >> (flag))))
