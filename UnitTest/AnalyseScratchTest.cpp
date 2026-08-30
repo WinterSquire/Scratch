@@ -38,8 +38,6 @@ TEST_SUITE("AnalyseScratchTest")
                 exp.timestamps[0] = exp.timestamps[1] = exp.timestamps[2] = 1145141919810;
                 exp.debugImages[ScratchAnalyseStageMasking] = images + 1;
                 exp.debugImages[ScratchAnalyseStageContouring] = images + 2;
-
-                parameter.masking.method = -1;
             }
 
             ScratchParameterGlobal parameter;
