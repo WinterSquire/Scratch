@@ -140,15 +140,11 @@ TEST_SUITE("AnalyseScratchTest")
             ZoneScopedN("Serialization");
 
             std::ofstream html(IMAGE_PATH_PREFIX "/index.html");
-            std::ofstream dataJs(IMAGE_PATH_PREFIX "/data.js");
-            std::ofstream imageJs(IMAGE_PATH_PREFIX "/images.js");
 
             lab.exp.debugImages[ScratchAnalyseStageMasking] = lab.expImageMaskList.data();
             lab.exp.debugImages[ScratchAnalyseStageContouring] = lab.expImageContourList.data();
 
-            Scratch::createHTMLTemplate(html);
-            CDataJsSerializer().serialize(lab.size, &lab.exp, &lab.con, lab.parameter, dataJs);
-            CImagesJsSerializer().serialize(lab.size, &lab.exp, NULL, lab.parameter, imageJs);
+            CHTMLSerializer().serialize(lab.size, &lab.exp, &lab.con, lab.parameter, html);
         }
 
         std::filesystem::path path = std::filesystem::absolute("Data/Input/S1/index.html");

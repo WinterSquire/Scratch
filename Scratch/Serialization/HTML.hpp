@@ -2,8 +2,14 @@
 
 #include "Serialization.hpp"
 
-namespace Scratch
+class CHTMLSerializer : public ISerializer
 {
-    int createHTMLTemplate(std::ostream& os);
+public:
+    virtual int serialize(
+        size_t size,
+        struct ScratchParameterKinetic* exp,
+        struct ScratchParameterKinetic* con,
+        struct ScratchParameterGlobal& parameter, 
+        std::ostream& os) override;
 };
 

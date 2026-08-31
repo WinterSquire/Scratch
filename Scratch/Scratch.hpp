@@ -31,6 +31,14 @@
 
 /* ---------- enums */
 
+enum EScratchError
+{
+    ScratchErrorSuccess,
+    ScratchErrorDelay,
+
+    ScratchErrorFail = -1
+};
+
 enum EScratchParameterFlag
 {
     
