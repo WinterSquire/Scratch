@@ -15,9 +15,6 @@ set(ScratchSource
     Scratch/Serialization/CSV.cpp
     Scratch/Serialization/HTML.cpp
     Scratch/Serialization/JSON.cpp
-
-    Scratch/WebView/ScratchReport.cpp
-    Scratch/WebView/ScratchReport.hpp
 )
 
 # add library
@@ -26,7 +23,7 @@ add_library(Scratch STATIC
 )
 
 target_include_directories(Scratch PUBLIC Scratch)
-target_link_libraries(Scratch PUBLIC ${OpenCV_LIBS} Qt6::Core Qt6::Widgets Qt6::WebView)
+target_link_libraries(Scratch PUBLIC ${OpenCV_LIBS} Qt6::Core Qt6::Widgets)
 
 if(PROFILE)
     target_compile_definitions(Scratch PUBLIC TRACY_ENABLE)
