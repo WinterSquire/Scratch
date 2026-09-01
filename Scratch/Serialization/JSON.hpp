@@ -8,25 +8,25 @@
 #define toJsonString(data) (QJsonDocument(toJson(data)).toJson())
 #define fromJsonString(data, json) fromJson(data, (QJsonDocument::fromJson(jsonUtf8)));
 
-class CDataJsSerializer : public ISerializer
+class CDataJsonSerializer : public ISerializer
 {
 public:
     virtual int serialize(
         size_t size,
-        struct ScratchParameterKinetic* exp,
-        struct ScratchParameterKinetic* con,
-        struct ScratchParameterGlobal& parameter, 
+        const struct ScratchParameterKinetic* exp,
+        const struct ScratchParameterKinetic* con,
+        const struct ScratchParameterGlobal& parameter, 
         std::ostream& os) override;
 };
 
-class CImagesJsSerializer : public ISerializer
+class CImagesJsonSerializer : public ISerializer
 {
 public:
     virtual int serialize(
         size_t size,
-        struct ScratchParameterKinetic* exp,
-        struct ScratchParameterKinetic* con,
-        struct ScratchParameterGlobal& parameter, 
+        const struct ScratchParameterKinetic* exp,
+        const struct ScratchParameterKinetic* con,
+        const struct ScratchParameterGlobal& parameter, 
         std::ostream& os) override;
 
     static QByteArray cvMatToBase64(const cv::Mat& mat);

@@ -6,7 +6,7 @@
 #include "../Scratch.hpp"
 #include "JSON.hpp"
 
-int CDataJsSerializer::serialize(size_t size, ScratchParameterKinetic *exp, ScratchParameterKinetic *con, ScratchParameterGlobal &parameter, std::ostream &os)
+int CDataJsonSerializer::serialize(size_t size, const ScratchParameterKinetic *exp, const ScratchParameterKinetic *con, const ScratchParameterGlobal &parameter, std::ostream &os)
 {
     QJsonObject jRoot;
 
@@ -15,11 +15,11 @@ int CDataJsSerializer::serialize(size_t size, ScratchParameterKinetic *exp, Scra
     
     jRoot["parameter"] = toJson(parameter);
 
-    os << "const DATA = " << QJsonDocument(jRoot).toJson(QJsonDocument::Compact).constData();
+    os << QJsonDocument(jRoot).toJson(QJsonDocument::Compact).constData();
     return 0;
 }
 
-int CImagesJsSerializer::serialize(size_t size, ScratchParameterKinetic *exp, ScratchParameterKinetic *con, ScratchParameterGlobal &parameter, std::ostream &os)
+int CImagesJsonSerializer::serialize(size_t size, const ScratchParameterKinetic *exp, const ScratchParameterKinetic *con, const ScratchParameterGlobal &parameter, std::ostream &os)
 {
     QJsonObject jRoot;
     QJsonArray imageRaw, imageMask, imageContour;
@@ -40,11 +40,11 @@ int CImagesJsSerializer::serialize(size_t size, ScratchParameterKinetic *exp, Sc
     jRoot["imageMask"] = imageMask;
     jRoot["imageContour"] = imageContour;
 
-    os << "const IMAGES = " << QJsonDocument(jRoot).toJson(QJsonDocument::Compact).constData();
+    os << QJsonDocument(jRoot).toJson(QJsonDocument::Compact).constData();
     return 0;
 }
 
-QByteArray CImagesJsSerializer::cvMatToBase64(const cv::Mat &mat)
+QByteArray CImagesJsonSerializer::cvMatToBase64(const cv::Mat &mat)
 {
     if (mat.empty())
         return {};

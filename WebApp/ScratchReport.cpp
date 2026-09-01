@@ -2,7 +2,7 @@
 #include <QVBoxLayout>
 #include <QWebView>
 #include "WebView2.h"
-#include "../Scratch.hpp"
+#include <Scratch.hpp>
 
 #include "ScratchReport.hpp"
 

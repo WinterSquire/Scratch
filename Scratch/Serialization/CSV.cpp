@@ -50,7 +50,7 @@ static const char* toString(int quality)
     }
 }
 
-int CCSVSerializer::serialize(size_t size, ScratchParameterKinetic *exp, ScratchParameterKinetic *con, ScratchParameterGlobal &parameter, std::ostream &os)
+int CCSVSerializer::serialize(size_t size, const ScratchParameterKinetic *exp, const ScratchParameterKinetic *con, const ScratchParameterGlobal &parameter, std::ostream &os)
 {
     QString value;
     uint64_t baseTimestamp = exp->timestamps[0];

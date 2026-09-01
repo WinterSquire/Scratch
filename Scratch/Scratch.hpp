@@ -95,7 +95,7 @@ public:
      * @param[in] size
      * @return int 错误码，0代表处理成功；非0为异常错误码（图像为空、分割失败等）
      */
-    static int analyseScratchKinetic(struct ScratchParameterKinetic& parameter, struct ScratchParameterGlobal& gParameter, size_t size);
+    static int analyseScratchKinetic(struct ScratchParameterKinetic& parameter, const struct ScratchParameterGlobal& gParameter, size_t size);
 
     /**
      * @brief 划痕实验时序图像单张分析接口
@@ -107,7 +107,7 @@ public:
      * @param[out] result 输出分析结果
      * @return int 错误码，0代表处理成功；非0为异常错误码（图像为空、分割失败等）
      */
-    static int analyseScratchKineticOnce(struct ScratchParameterKineticOnce& parameter, struct ScratchParameterGlobal& gParameter);
+    static int analyseScratchKineticOnce(struct ScratchParameterKineticOnce& parameter, const struct ScratchParameterGlobal& gParameter);
 };
 
 /* ---------- 数据结构体 */

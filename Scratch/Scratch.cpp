@@ -25,7 +25,7 @@ union ContouringStorage
 
 inline static EScratchQuality analyseScratch(
     const cv::Mat& image, 
-    struct ScratchParameterGlobal& parameter, 
+    const struct ScratchParameterGlobal& parameter, 
     struct ScratchResult& result,
     cv::Mat* debugImages[NumberOfScratchAnalyseStage])
 {
@@ -117,7 +117,7 @@ inline static void calculateScratchResult(
     frameCurrent.speed.width = (framePrevious.width.avg - frameCurrent.width.avg) / timeElapsed;
 }
 
-int CScratchController::analyseScratchKinetic(struct ScratchParameterKinetic& parameter, struct ScratchParameterGlobal& gParameter, size_t size)
+int CScratchController::analyseScratchKinetic(struct ScratchParameterKinetic& parameter, const struct ScratchParameterGlobal& gParameter, size_t size)
 {
     ZoneScoped;
 
@@ -185,7 +185,7 @@ int CScratchController::analyseScratchKinetic(struct ScratchParameterKinetic& pa
     return 0;
 }
 
-int CScratchController::analyseScratchKineticOnce(struct ScratchParameterKineticOnce& parameter, struct ScratchParameterGlobal& gParameter)
+int CScratchController::analyseScratchKineticOnce(struct ScratchParameterKineticOnce& parameter, const struct ScratchParameterGlobal& gParameter)
 {
     auto timeElapsed = (parameter.timestamps[FrameCurrent] - parameter.timestamps[FramePrevious]) / 3600.0;
 

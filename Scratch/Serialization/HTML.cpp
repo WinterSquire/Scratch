@@ -24,7 +24,7 @@ const char tagScript[] = R"(
     <script>
 )";
 
-int CHTMLSerializer::serialize(size_t size, ScratchParameterKinetic *exp, ScratchParameterKinetic *con, ScratchParameterGlobal &parameter, std::ostream &os)
+int CHTMLSerializer::serialize(size_t size, const ScratchParameterKinetic *exp, const ScratchParameterKinetic *con, const ScratchParameterGlobal &parameter, std::ostream &os)
 {
     os.write((const char*)head_html, head_html_len);
     os.write((const char*)index_css, index_css_len);
@@ -40,13 +40,13 @@ int CHTMLSerializer::serialize(size_t size, ScratchParameterKinetic *exp, Scratc
 
         os.write(tagScript, sizeof(tagScript));
 
-        CDataJsSerializer().serialize(size, exp, con, parameter, os);
+        CDataJsonSerializer().serialize(size, exp, con, parameter, os);
         os << '\n';
 
         if (exp->images == NULL)
             break;
         
-        CImagesJsSerializer().serialize(size, exp, NULL, parameter, os);
+        CImagesJsonSerializer().serialize(size, exp, NULL, parameter, os);
         os << '\n';
     } while (0);
 

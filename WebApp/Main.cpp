@@ -1,8 +1,8 @@
 #include <QtWebView>
 #include <QApplication>
 
-#include <WebView/ScratchReport.hpp>
 #include <Scratch.hpp>
+#include "ScratchReport.hpp"
 
 int main(int argc, char** argv)
 {
@@ -11,7 +11,7 @@ int main(int argc, char** argv)
 
     CScratchReport resport;
 
-    resport.open("D:\\work\\Project\\Scratch\\Data\\HTML", "index.html");
+    resport.open("./", "index.html");
 
     resport.show();
     
