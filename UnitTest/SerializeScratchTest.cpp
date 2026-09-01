@@ -24,14 +24,6 @@
 
 TEST_SUITE("SerializeScratchTest")
 {
-    TEST_CASE("TestHTMLSerialize")
-    {
-        std::ofstream html("test.html");
-        ScratchParameterGlobal parameter;
-
-        CHTMLSerializer().serialize(0, NULL, NULL, parameter, html);
-    }
-
     TEST_CASE("TestJSONSerialize")
     {
         // ScratchResult scratchResult{};

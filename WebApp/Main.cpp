@@ -10,9 +10,7 @@ int main(int argc, char** argv)
     QApplication app(argc, argv);
 
     CScratchReport resport;
-
-    resport.open("./", "index.html");
-
+    resport.setFolder("./");
     resport.show();
     
     return app.exec();

@@ -136,16 +136,14 @@ TEST_SUITE("AnalyseScratchTest")
 
         lab.generate();
         
-        {   
-            ZoneScopedN("Serialization");
+        // {   
+        //     ZoneScopedN("Serialization");
 
-            std::ofstream html(IMAGE_PATH_PREFIX "/index.html");
+        //     std::ofstream html(IMAGE_PATH_PREFIX "/index.html");
 
-            lab.exp.debugImages[ScratchAnalyseStageMasking] = lab.expImageMaskList.data();
-            lab.exp.debugImages[ScratchAnalyseStageContouring] = lab.expImageContourList.data();
-
-            CHTMLSerializer().serialize(lab.size, &lab.exp, &lab.con, lab.parameter, html);
-        }
+        //     lab.exp.debugImages[ScratchAnalyseStageMasking] = lab.expImageMaskList.data();
+        //     lab.exp.debugImages[ScratchAnalyseStageContouring] = lab.expImageContourList.data();;
+        // }
 
         std::filesystem::path path = std::filesystem::absolute("Data/Input/S1/index.html");
 

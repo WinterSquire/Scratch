@@ -6,12 +6,15 @@
 
 #include "ScratchReport.hpp"
 
-#define PREFIX_HTTPS "https://"
-#define HOST_NAME "app.local"
-#define _WTEXT(text) L##text 
-#define WTEXT(text) _WTEXT(text)
-
 using Microsoft::WRL::ComPtr;
+
+extern "C"
+{
+    extern const char index_html_start[];
+    extern const char index_html_end[];
+}
+
+#define HOST_NAME L"app.local"
 
 inline ICoreWebView2* getWebView2(QWebView& webview)
 {
@@ -24,6 +27,17 @@ inline ICoreWebView2* getWebView2(QWebView& webview)
     } *_container = (_Container*)&webview;
 
     return _container->_private->webview;
+}
+
+inline void openFolder(class ICoreWebView2_3* webview, QString folder)
+{
+    webview->SetVirtualHostNameToFolderMapping(
+        HOST_NAME,
+        (LPCWSTR)folder.utf16(),
+        COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS
+    );
+
+    webview->Navigate(L"https://" HOST_NAME L"/index.html");
 }
 
 CScratchReport::CScratchReport(QWidget* parent) : 
@@ -39,6 +53,7 @@ CScratchReport::CScratchReport(QWidget* parent) :
     layout->addWidget(widget);
 
     connect(webview, &QWebView::loadingChanged, this, [this, webview](const QWebViewLoadingInfo &loadingInfo){
+        EventRegistrationToken token;
         ComPtr<ICoreWebView2_3> webview3;
         ComPtr<ICoreWebView2Settings> settings;
         ComPtr<ICoreWebView2Settings3> setting3;
@@ -54,8 +69,8 @@ CScratchReport::CScratchReport(QWidget* parent) :
         mWebview = webview3.Get();
         mWebview->AddRef();
 
-        if (!mFolder.isEmpty() && !mFile.isEmpty())
-            dispatchOpen();
+        if (!mFolder.isEmpty())
+            openFolder(mWebview, mFolder);
     }, Qt::SingleShotConnection);
 
     webview->setUrl(QUrl("about:blank"));
@@ -67,30 +82,12 @@ CScratchReport::~CScratchReport()
         mWebview->Release();
 }
 
-int CScratchReport::open(QString folder, QString file)
+void CScratchReport::setFolder(QString folder)
 {
     mFolder = folder;
-    mFile = file;
 
     if (!mWebview)
-        return ScratchErrorDelay;
+        return;
 
-    dispatchOpen();
-
-    return ScratchErrorSuccess;
-}
-
-int CScratchReport::dispatchOpen()
-{
-    mWebview->SetVirtualHostNameToFolderMapping(
-        WTEXT(HOST_NAME),
-        (LPCWSTR)mFolder.utf16(),
-        COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS
-    );
-
-    auto url = PREFIX_HTTPS HOST_NAME "/" + mFile;
-
-    mWebview->Navigate((LPCWSTR)url.utf16());
-
-    return 0;
+    openFolder(mWebview, mFolder);
 }

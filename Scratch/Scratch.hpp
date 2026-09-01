@@ -8,7 +8,6 @@
 #include <opencv2/opencv.hpp>
 
 #include "Serialization/CSV.hpp"
-#include "Serialization/HTML.hpp"
 #include "Serialization/JSON.hpp"
 
 #ifdef TRACY_ENABLE

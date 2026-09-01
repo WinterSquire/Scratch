@@ -13,7 +13,6 @@ set(ScratchSource
 
     # 序列化
     Scratch/Serialization/CSV.cpp
-    Scratch/Serialization/HTML.cpp
     Scratch/Serialization/JSON.cpp
 )
 

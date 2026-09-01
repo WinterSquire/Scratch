@@ -7,6 +7,13 @@
 
 #include "DatabaseManager.hpp"
 
+extern "C"
+{
+	extern const char index_html_start[];
+	extern const char index_html_end[];
+}
+
+
 union Rectangle
 {
 	struct { int x1, y1, x2, y2; };
@@ -133,6 +140,8 @@ static QString ScratchAnalyser::process(
 
 			// write data
 			std::ofstream data_json(wellDir + "/data.json");
+			std::ofstream index_html(wellDir + "/index.html");
+			index_html.write(index_html_start, (size_t)(index_html_end - index_html_start));
 
 			__parameter.p = _parameter.p;
 			__parameter.t50 = _parameter.t50;

@@ -10,12 +10,9 @@ public:
     CScratchReport(QWidget* paremt = NULL);
     ~CScratchReport();
 
-    int open(QString folder, QString file);
+    void setFolder(QString folder);
 
 private:
-    int dispatchOpen();
-
-private:
-    QString mFolder, mFile;
+    QString mFolder;
     class ICoreWebView2_3* mWebview;
 };
