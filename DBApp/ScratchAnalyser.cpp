@@ -5,7 +5,7 @@
 #include <Scratch.hpp>
 #include "ScratchAnalyser.hpp"
 
-#include "Dummy.hpp"
+#include "DatabaseManager.hpp"
 
 union Rectangle
 {
@@ -56,8 +56,10 @@ static QString ScratchAnalyser::process(
 	cv::Mat images[3];
 	QList<SampleInfo> samples;
 	ScratchParameterKineticOnce _parameter;
+	ScratchParameterKinetic __parameter;
 	auto numberOfSequence = experiment.cycleCount;
 	std::vector<ScratchResult> frames(numberOfSequence);
+	std::vector<uint64_t> timestamps(numberOfSequence);
 	
 	_parameter.image = images + 0;
 	_parameter.debugImages[0] = images + 1;
@@ -93,10 +95,10 @@ static QString ScratchAnalyser::process(
 				{
 					auto sampleIndex = (sample.fieldY - dimOfSample.y) * dimOfSample.width + (sample.fieldX - dimOfSample.x);
 					sampleImages[sampleIndex] = cv::imread(sample.segmentationResultPath.toStdString());
-					wellTime += sample.captureTime.toSecsSinceEpoch();
+					timestamps[sequenceIndex] += sample.captureTime.toSecsSinceEpoch();
 				}
 
-				wellTime /= samples.size();
+				timestamps[sequenceIndex] /= samples.size();
 
 				// config parameter
 				if (!sequenceIndex)
@@ -104,13 +106,13 @@ static QString ScratchAnalyser::process(
 					_parameter.p = 1.0;
 					_parameter.t50 = _parameter.t90 = 0;
 					_parameter.frames[FrameCurrent] = _parameter.frames[FramePrevious] = _parameter.frames[FrameFirst] = frames.data() + 0;
-					_parameter.timestamps[FrameCurrent] = _parameter.timestamps[FramePrevious] = _parameter.timestamps[FrameFirst] = wellTime;
+					_parameter.timestamps[FrameCurrent] = _parameter.timestamps[FramePrevious] = _parameter.timestamps[FrameFirst] = timestamps[sequenceIndex];
 				}
 				else
 				{
 					_parameter.frames[FramePrevious] = _parameter.frames[FrameCurrent]++;
 					_parameter.timestamps[FramePrevious] = _parameter.timestamps[FrameCurrent];
-					_parameter.timestamps[FrameCurrent] = wellTime;
+					_parameter.timestamps[FrameCurrent] = timestamps[sequenceIndex];
 				}
 				
 				// concat images
@@ -132,9 +134,15 @@ static QString ScratchAnalyser::process(
 			// write data
 			std::ofstream data_json(wellDir + "/data.json");
 
+			__parameter.p = _parameter.p;
+			__parameter.t50 = _parameter.t50;
+			__parameter.t90 = _parameter.t90;
+			__parameter.frames = frames.data();
+			__parameter.timestamps = timestamps.data();
+
 			CDataJsonSerializer().serialize(
 				numberOfSequence,
-				NULL,
+				&__parameter,
 				NULL,
 				parameter,
 				data_json

@@ -4,3 +4,5 @@
 Build/
 
 Scratch/WWW
+
+DBApp/DatabaseManager.hpp

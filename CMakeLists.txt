@@ -7,9 +7,10 @@ option(PROFILE "Enable profiling" OFF)
 
 # get required package
 find_package(OpenCV REQUIRED)
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets WebView)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets WebView Sql)
 find_package(Tracy)
 
 include("Scratch/Scratch.cmake")
 include("UnitTest/UnitTest.cmake")
 include("WebApp/WebApp.cmake")
+include("DBApp/DBApp.cmake")
